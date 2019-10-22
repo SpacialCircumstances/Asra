@@ -81,10 +81,13 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let importParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "@import" .>> spaces .>>. nameParser |>> fun (data, name) -> Import (name, data)
 
+    let ifParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "if" .>> spaces1 .>>. functionExpressionParser .>> skipString "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> skipString "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)
+
     expressionParserRef := spaces >>. choiceL [
         letParser
         lambdaExpressionParser
         importParser
+        ifParser
         literalExpressionParser
         groupExpressionParser
         variableExpressionParser ] "Expression" .>> spaces
