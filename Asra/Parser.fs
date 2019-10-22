@@ -100,4 +100,10 @@ let createParser (dataParser: Parser<'data, unit>) =
         literalExpressionParser
         groupExpressionParser ] "Expression" .>> spaces
 
-    expressionParser
+    let parse (name: string) (code: string) = match CharParsers.runParserOnString expressionParser () name code with
+                                                | Success (res, _, _) -> Result.Ok res
+                                                | Failure (es, _, _) -> Result.Error es
+
+    parse
+
+let testParser = createParser (preturn ())
