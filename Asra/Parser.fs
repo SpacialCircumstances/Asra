@@ -73,7 +73,14 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> spaces .>>? skipString "fun" .>>? spaces1 .>>. (sepBy1 declarationParser spaces1) .>> skipString "->" .>>. expressionParser |>> fun ((data, parameters), expr) -> Lambda (parameters, expr, data)
 
+    let endParser = skipString "end" 
+
+    let bindingParser: Parser<LetBinding<'data>, unit> = declarationParser .>> spaces .>> skipChar '=' .>> spaces .>>. expressionParser |>> LetBinding
+
+    let letParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "let" .>>? spaces1 .>>. (sepBy1 bindingParser spaces1) .>> spaces .>> skipString "in" .>>. expressionParser .>> endParser |>> fun ((data, bindings), expr) -> Let (bindings, expr, data)
+
     expressionParserRef := spaces >>. choiceL [
+        letParser
         lambdaExpressionParser
         literalExpressionParser
         groupExpressionParser
