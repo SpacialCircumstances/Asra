@@ -5,7 +5,8 @@ open FParsec
 open FParsec.CharParsers
 
 let createParser (dataParser: Parser<'data, unit>) =
-    
+    let (expressionParser: Parser<Expression<'data>, unit>, expressionParserRef) = createParserForwardedToRef ()
+
     let floatLiteralParser: Parser<Literal, unit> = numberLiteral (NumberLiteralOptions.DefaultFloat) "Float literal" |>> fun f -> 
         match f.IsInteger with
             | true -> int64 f.String |> Int
@@ -43,4 +44,32 @@ let createParser (dataParser: Parser<'data, unit>) =
             stringLiteralParser
             unitLiteralParser ] "Literal" |>> fun (data, lit) -> Literal (lit, data)
 
-    literalExpressionParser
+    let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>? skipChar '(' .>>? spaces .>>. expressionParser .>> spaces .>> skipChar ')' |>> fun (data, expr) -> Group (expr, data)
+
+    let isSeparator (c: char) = System.Char.IsWhiteSpace c || c = ')' || c = '('
+    
+    let isIdentifierStart (c: char) = (not (isDigit c)) && not (isSeparator c)
+    
+    let isIdentifierContinue (c: char) = not (isSeparator c)
+    
+    let identifierOptions = IdentifierOptions(isAsciiIdStart = isIdentifierStart, isAsciiIdContinue = isIdentifierContinue)
+    
+    let identifierParser: Parser<string, unit> = identifier identifierOptions
+    
+    let nameParser = identifierParser >>= (fun s ->
+        match s with
+            | "->" -> fail ""
+            | "=" -> fail ""
+            | "fun" -> fail ""
+            | "let" -> fail ""
+            | "in" -> fail ""
+            | _ -> preturn s)
+
+    let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> fun (data, name) -> Variable (name, data)
+
+    expressionParserRef := choiceL [
+        literalExpressionParser
+        groupExpressionParser
+        variableExpressionParser ] "Expression"
+
+    expressionParser

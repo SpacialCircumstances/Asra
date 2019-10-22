@@ -20,7 +20,7 @@ and Literal =
 
 and Expression<'data> =
     | Literal of Literal * 'data
-    | Group of Expression<'data>
+    | Group of Expression<'data> * 'data
     | Let of LetBinding<'data> list * Expression<'data> * 'data
     | Variable of string * 'data
     | Lambda of Declaration list * Expression<'data> * 'data
