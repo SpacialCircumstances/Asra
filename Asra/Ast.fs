@@ -1,7 +1,5 @@
 ﻿module Ast
 
-type CodePosition = FParsec.Position
-
 type TypeDeclaration =
     | Name of string
     | Generic of string
@@ -12,12 +10,12 @@ type Declaration =
     | Named of string
     | TypeAnnotated of string * TypeDeclaration
 
-type LetBinding = Declaration * Expression
+type LetBinding<'data> = Declaration * Expression<'data>
 
-and Expression =
-    | Let of LetBinding list * Expression * CodePosition
-    | Variable of string * CodePosition
-    | Lambda of Declaration list * Expression * CodePosition
-    | FunctionCall of Expression * (Expression list) * CodePosition
-    | If of Expression * Expression * Expression * CodePosition
-    | Import of string * CodePosition
+and Expression<'data> =
+    | Let of LetBinding<'data> list * Expression<'data> * 'data
+    | Variable of string * 'data
+    | Lambda of Declaration list * Expression<'data> * 'data
+    | FunctionCall of Expression<'data> * (Expression<'data> list) * 'data
+    | If of Expression<'data> * Expression<'data> * Expression<'data> * 'data
+    | Import of string * 'data
