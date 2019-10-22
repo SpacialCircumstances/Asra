@@ -41,8 +41,8 @@ let createParser (dataParser: Parser<'data, unit>) =
     let literalExpressionParser: Parser<Expression<'data>, unit> = 
         dataParser .>>.
         choiceL [ 
-            intLiteralParser
             floatLiteralParser
+            intLiteralParser
             stringLiteralParser
             unitLiteralParser ] "Literal" |>> fun (data, lit) -> Literal (lit, data)
 
@@ -106,4 +106,4 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     parse
 
-let testParser = createParser (preturn ())
+let testParser = createParser (preturn ()) "Test"
