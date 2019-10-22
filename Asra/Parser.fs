@@ -7,6 +7,8 @@ open FParsec.CharParsers
 let createParser (dataParser: Parser<'data, unit>) =
     let (expressionParser: Parser<Expression<'data>, unit>, expressionParserRef) = createParserForwardedToRef ()
 
+    let (functionExpressionParser: Parser<Expression<'data>, unit>, functionExpressionParserRef) = createParserForwardedToRef ()
+
     let floatLiteralParser: Parser<Literal, unit> = numberLiteral (NumberLiteralOptions.DefaultFloat) "Float literal" |>> fun f -> 
         match f.IsInteger with
             | true -> int64 f.String |> Int
@@ -44,7 +46,7 @@ let createParser (dataParser: Parser<'data, unit>) =
             stringLiteralParser
             unitLiteralParser ] "Literal" |>> fun (data, lit) -> Literal (lit, data)
 
-    let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>? skipChar '(' .>>? spaces .>>. expressionParser .>> spaces .>> skipChar ')' |>> fun (data, expr) -> Group (expr, data)
+    let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> skipChar '(' .>>? spaces .>>. expressionParser .>> spaces .>> skipChar ')' |>> fun (data, expr) -> Group (expr, data)
 
     let isSeparator (c: char) = System.Char.IsWhiteSpace c || c = ')' || c = '('
     
@@ -65,11 +67,21 @@ let createParser (dataParser: Parser<'data, unit>) =
             | "in" -> fail ""
             | _ -> preturn s)
 
+    let declarationParser = nameParser |>> Named
+
     let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> fun (data, name) -> Variable (name, data)
 
-    expressionParserRef := choiceL [
+    let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> spaces .>>? skipString "fun" .>>? spaces1 .>>. (sepBy1 declarationParser spaces1) .>> skipString "->" .>>. expressionParser |>> fun ((data, parameters), expr) -> Lambda (parameters, expr, data)
+
+    expressionParserRef := spaces >>. choiceL [
+        lambdaExpressionParser
         literalExpressionParser
         groupExpressionParser
-        variableExpressionParser ] "Expression"
+        variableExpressionParser ] "Expression" .>> spaces
+
+    functionExpressionParserRef := spaces >>. choiceL [
+        variableExpressionParser
+        literalExpressionParser
+        groupExpressionParser ] "Expression" .>> spaces
 
     expressionParser
