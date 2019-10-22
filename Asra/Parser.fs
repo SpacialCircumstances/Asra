@@ -79,9 +79,12 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let letParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "let" .>>? spaces1 .>>. (sepBy1 bindingParser spaces1) .>> spaces .>> skipString "in" .>>. expressionParser .>> endParser |>> fun ((data, bindings), expr) -> Let (bindings, expr, data)
 
+    let importParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "@import" .>> spaces .>>. nameParser |>> fun (data, name) -> Import (name, data)
+
     expressionParserRef := spaces >>. choiceL [
         letParser
         lambdaExpressionParser
+        importParser
         literalExpressionParser
         groupExpressionParser
         variableExpressionParser ] "Expression" .>> spaces
