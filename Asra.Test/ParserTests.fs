@@ -1,0 +1,32 @@
+﻿module ParserTests
+
+open Ast
+open Parser
+open Xunit
+
+let assertEqResult (expected: 'a) (got: Result<'a, 'b>) =
+    let gotR = match got with
+                    | Error e -> 
+                        Assert.True(false, e.ToString())
+                        invalidOp "Unreachable"
+                    | Ok g -> g
+    Assert.Equal<'a>(expected, gotR)
+
+[<Fact>]
+let ``Literal parsing`` () =
+    [
+        "12", Int 12L
+        "2188", Int 2188L
+        "-21", Int -21L
+        "002", Int 2L
+        "322.32", Float 322.32
+        "-123.0", Float -123.0
+        "()", Unit
+        "\"\"", String ""
+        "\"test\"", String "test"
+        "\"hello\\nworld\"", String "hello\nworld"
+    ] |>
+    List.iter (fun (code, expectedAst) ->
+        let res = testParser code
+        assertEqResult (Literal (expectedAst, ())) res
+    )
