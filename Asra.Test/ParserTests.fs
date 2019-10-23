@@ -138,3 +138,68 @@ let ``If parsing`` () =
         let res = testParser code
         assertEqResult expectedAst res
     )
+
+[<Fact>]
+let ``Function call parsing`` () =
+    [
+        "f x", FunctionCall (Variable ("f", ()), [
+            Variable ("x", ())
+        ], ())
+        "f x y", FunctionCall (Variable("f", ()), [
+            Variable ("x", ())
+            Variable ("y", ())
+        ], ())
+        "f (x y)", FunctionCall (Variable ("f", ()), [
+            Group (
+                FunctionCall (Variable ("x", ()), [
+                    Variable ("y", ())
+                ], ()), ())
+        ], ())
+        "(f x) (g y)", FunctionCall (
+            Group (
+                FunctionCall (Variable ("f", ()), [
+                    Variable ("x", ())
+                ], ()), ()),
+            [
+                Group (
+                    FunctionCall (Variable ("g", ()), [
+                        Variable ("y", ())
+                    ], ()), ())
+            ],
+            ())
+        "(fun x -> x) y", FunctionCall (
+            Group (
+                Lambda ([
+                    Named "x"
+                ], Variable ("x", ()), ()),
+                ()),
+            [
+                Variable ("y", ())
+            ], ())
+        """
+        let 
+            a = f x y
+            b = g c d
+        in 
+            h a b
+        end
+        """, 
+        Let ([
+                Named "a", FunctionCall (Variable ("f", ()), [
+                    Variable ("x", ())
+                    Variable ("y", ())
+                ], ())
+                Named "b", FunctionCall (Variable ("g", ()), [
+                    Variable ("c", ())
+                    Variable ("d", ())
+                ], ())
+            ],
+            FunctionCall (Variable ("h", ()), [
+                Variable ("a", ())
+                Variable ("b", ())
+            ], ()), ())
+    ] |>
+    List.iter (fun (code, expectedAst) ->
+        let res = testParser code
+        assertEqResult expectedAst res
+    )
