@@ -98,7 +98,7 @@ let ``Let parsing`` () =
             Named "w", Literal (Int 12L, ())
             Named "id", Lambda ([ Named "x" ], Variable ("x", ()), ())
             Named "m", Group (Lambda ([ Named "y" ], Variable ("y", ()), ()), ())
-        ], Variable ("x", ()), ())
+        ], Variable ("w", ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code

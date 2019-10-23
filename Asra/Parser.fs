@@ -86,7 +86,7 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let bindingParser: Parser<LetBinding<'data>, unit> = declarationParser .>> spaces .>> skipChar '=' .>> spaces .>>. expressionParser |>> LetBinding <!> "Let binding parser"
 
-    let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepBy1 bindingParser spaces1) .>> spaces .>> keyword "in" .>>. expressionParser .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <!> "Let expression parser"
+    let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepEndBy1 bindingParser spaces) .>> keyword "in" .>>. expressionParser .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <!> "Let expression parser"
 
     let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "@import" .>> spaces .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <!> "Import expression parser"
 
