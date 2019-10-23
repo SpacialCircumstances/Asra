@@ -91,13 +91,13 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let bindingParser: Parser<LetBinding<'data>, unit> = declarationParser .>> spaces1 .>> skipChar '=' .>> spaces1 .>>. expressionParser |>> LetBinding <!> "Let binding parser"
 
-    let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepEndBy1 bindingParser spaces1) .>> keyword "in" .>> spaces1 .>>. expressionParser .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <!> "Let expression parser"
+    let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepEndBy1 bindingParser spaces1) .>> keyword "in" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <!> "Let expression parser"
 
     let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "import!" .>> spaces1 .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <!> "Import expression parser"
 
     let ifParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "if" .>> spaces1 .>>. functionExpressionParser .>> spaces1 .>> keyword "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> keyword "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <!> "If expression parser"
 
-    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? spaces1 .>>.? (sepBy1 functionExpressionParser spaces1) |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
+    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? spaces1 .>>.? attempt (sepBy1 functionExpressionParser spaces1) |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
 
     expressionParserRef := choiceL [
         letParser
