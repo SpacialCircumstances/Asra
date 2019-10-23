@@ -123,3 +123,18 @@ let ``Import parsing`` () =
         let res = testParser code
         assertEqResult expectedAst res
     )
+
+[<Fact>]
+let ``If parsing`` () =
+    [
+        "if x then a else b end", If (Variable ("x", ()), Variable ("a", ()), Variable ("b", ()), ())
+        """
+        if true then
+            stuff
+        else () end
+        """, If (Variable ("true", ()), Variable ("stuff", ()), Literal (Unit, ()), ())
+    ] |>
+    List.iter (fun (code, expectedAst) ->
+        let res = testParser code
+        assertEqResult expectedAst res
+    )
