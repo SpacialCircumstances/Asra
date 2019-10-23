@@ -72,6 +72,11 @@ let createParser (dataParser: Parser<'data, unit>) =
             | "fun" -> fail ""
             | "let" -> fail ""
             | "in" -> fail ""
+            | "if" -> fail ""
+            | "then" -> fail ""
+            | "end" -> fail ""
+            | "else" -> fail ""
+            | "import!" -> fail ""
             | _ -> preturn s) |> attempt
 
     let declarationParser = nameParser |>> Named <!> "Declaration parser"
