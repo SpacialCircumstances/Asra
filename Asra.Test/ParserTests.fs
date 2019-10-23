@@ -62,3 +62,45 @@ let ``Lambda parsing`` () =
         let res = testParser code
         assertEqResult expectedAst res
     )
+
+[<Fact>]
+let ``Let parsing`` () =
+    [
+        """
+        let 
+            x = fun y -> y
+        in
+            x
+        end
+        """, Let ([
+            Named "x", Lambda ([ Named "y" ], Variable ("y", ()), ())
+        ], Variable ("x", ()), ())
+        """
+        let a = 2 in
+        let b = "test" in
+        fun x -> a
+        end
+        end
+        """, Let ([
+            Named "a", Literal (Int 2L, ())
+        ], Let([
+            Named "b", Literal (String "test", ())
+        ], Lambda ([ Named "x" ], Variable ("a", ()), ()), ()), ())
+        """
+        let
+            w = 12
+            id = fun x -> x
+            m = (fun y -> y)
+        in
+            w
+        end
+        """, Let ([
+            Named "w", Literal (Int 12L, ())
+            Named "id", Lambda ([ Named "x" ], Variable ("x", ()), ())
+            Named "m", Group (Lambda ([ Named "y" ], Variable ("y", ()), ()), ())
+        ], Variable ("x", ()), ())
+    ] |>
+    List.iter (fun (code, expectedAst) ->
+        let res = testParser code
+        assertEqResult expectedAst res
+    )
