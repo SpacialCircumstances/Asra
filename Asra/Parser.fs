@@ -4,6 +4,13 @@ open Ast
 open FParsec
 open FParsec.CharParsers
 
+let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
+    fun stream ->
+        System.Diagnostics.Debug.WriteLine (sprintf "%A: Entering %s" stream.Position label)
+        let reply = p stream
+        System.Diagnostics.Debug.WriteLine (sprintf "%A: Leaving %s (%A)" stream.Position label reply.Status)
+        reply
+
 let createParser (dataParser: Parser<'data, unit>) =
     let (expressionParser: Parser<Expression<'data>, unit>, expressionParserRef) = createParserForwardedToRef ()
 
@@ -44,7 +51,7 @@ let createParser (dataParser: Parser<'data, unit>) =
             floatLiteralParser
             intLiteralParser
             stringLiteralParser
-            unitLiteralParser ] "Literal" |>> fun (data, lit) -> Literal (lit, data)
+            unitLiteralParser ] "Literal" |>> (fun (data, lit) -> Literal (lit, data)) <!> "Literal expression parser"
 
     let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> skipChar '(' .>>? spaces .>>. expressionParser .>> spaces .>> skipChar ')' |>> fun (data, expr) -> Group (expr, data)
 
@@ -69,21 +76,21 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let declarationParser = nameParser |>> Named
 
-    let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> fun (data, name) -> Variable (name, data)
+    let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> (fun (data, name) -> Variable (name, data)) <!> "Variable expression parser"
 
-    let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> spaces .>>? skipString "fun" .>>? spaces1 .>>. (sepBy1 declarationParser spaces1) .>> skipString "->" .>>. expressionParser |>> fun ((data, parameters), expr) -> Lambda (parameters, expr, data)
+    let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> spaces .>>? skipString "fun" .>>? spaces1 .>>. (sepBy1 declarationParser spaces1) .>> skipString "->" .>>. expressionParser |>> (fun ((data, parameters), expr) -> Lambda (parameters, expr, data)) <!> "Lambda expression parser"
 
     let endParser = skipString "end" 
 
-    let bindingParser: Parser<LetBinding<'data>, unit> = declarationParser .>> spaces .>> skipChar '=' .>> spaces .>>. expressionParser |>> LetBinding
+    let bindingParser: Parser<LetBinding<'data>, unit> = declarationParser .>> spaces .>> skipChar '=' .>> spaces .>>. expressionParser |>> LetBinding <!> "Let binding parser"
 
-    let letParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "let" .>>? spaces1 .>>. (sepBy1 bindingParser spaces1) .>> spaces .>> skipString "in" .>>. expressionParser .>> endParser |>> fun ((data, bindings), expr) -> Let (bindings, expr, data)
+    let letParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "let" .>>? spaces1 .>>. (sepBy1 bindingParser spaces1) .>> spaces .>> skipString "in" .>>. expressionParser .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <!> "Let expression parser"
 
-    let importParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "@import" .>> spaces .>>. nameParser |>> fun (data, name) -> Import (name, data)
+    let importParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "@import" .>> spaces .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <!> "Import expression parser"
 
-    let ifParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "if" .>> spaces1 .>>. functionExpressionParser .>> skipString "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> skipString "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)
+    let ifParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "if" .>> spaces1 .>>. functionExpressionParser .>> skipString "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> skipString "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <!> "If expression parser"
 
-    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. expressionParser .>>? spaces1 .>>.? (sepBy1 functionExpressionParser spaces1) .>> spaces |>> fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)
+    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. expressionParser .>>? spaces1 .>>.? (sepBy1 functionExpressionParser spaces1) .>> spaces |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
 
     expressionParserRef := spaces >>. choiceL [
         letParser
@@ -93,12 +100,12 @@ let createParser (dataParser: Parser<'data, unit>) =
         literalExpressionParser
         groupExpressionParser
         functionCallParser
-        variableExpressionParser ] "Expression" .>> spaces
+        variableExpressionParser ] "Expression" .>> spaces <!> "Expression parser"
 
     functionExpressionParserRef := spaces >>. choiceL [
         variableExpressionParser
         literalExpressionParser
-        groupExpressionParser ] "Expression" .>> spaces
+        groupExpressionParser ] "Expression" .>> spaces <!> "Function expression parser"
 
     let parse (name: string) (code: string) = match CharParsers.runParserOnString expressionParser () name code with
                                                 | Success (res, _, _) -> Result.Ok res
