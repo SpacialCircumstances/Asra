@@ -79,6 +79,10 @@ let createParser (dataParser: Parser<'data, unit>) =
             | "import!" -> fail ""
             | _ -> preturn s)
 
+    let isSimpleWhitespace (c: char) = c = ' ' || c = '\t'
+
+    let ws1 = skipMany1Satisfy isSimpleWhitespace
+
     let declarationParser = nameParser |>> Named <!> "Declaration parser"
 
     let keyword (kw: string) = skipString kw <?> kw <!> (sprintf "%s parser" kw)
@@ -97,7 +101,8 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let ifParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "if" .>> spaces1 .>>. functionExpressionParser .>> spaces1 .>> keyword "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> keyword "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <!> "If expression parser"
 
-    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? spaces1 .>>.? attempt (sepBy1 functionExpressionParser spaces1) |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
+    //TODO: Remove restriction that function calls must happen on one line?
+    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? ws1 .>>.? attempt (sepBy1 functionExpressionParser ws1) |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
 
     expressionParserRef := choiceL [
         letParser
