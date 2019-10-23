@@ -105,8 +105,8 @@ let createParser (dataParser: Parser<'data, unit>) =
         importParser
         ifParser
         literalExpressionParser
-        groupExpressionParser
         functionCallParser
+        groupExpressionParser
         variableExpressionParser ] "Expression" <!> "Expression parser"
 
     functionExpressionParserRef := choiceL [
