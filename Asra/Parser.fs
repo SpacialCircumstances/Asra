@@ -88,7 +88,7 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepEndBy1 bindingParser spaces) .>> keyword "in" .>>. expressionParser .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <!> "Let expression parser"
 
-    let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "@import" .>> spaces .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <!> "Import expression parser"
+    let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "import!" .>> spaces .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <!> "Import expression parser"
 
     let ifParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "if" .>> spaces1 .>>. functionExpressionParser .>> keyword "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> keyword "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <!> "If expression parser"
 
