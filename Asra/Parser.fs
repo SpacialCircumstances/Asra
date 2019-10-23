@@ -72,15 +72,15 @@ let createParser (dataParser: Parser<'data, unit>) =
             | "fun" -> fail ""
             | "let" -> fail ""
             | "in" -> fail ""
-            | _ -> preturn s)
+            | _ -> preturn s) |> attempt
 
-    let declarationParser = nameParser |>> Named
+    let declarationParser = nameParser |>> Named <!> "Declaration parser"
 
     let keyword (kw: string) = skipString kw <?> kw <!> (sprintf "%s parser" kw)
 
     let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> (fun (data, name) -> Variable (name, data)) <!> "Variable expression parser"
 
-    let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> spaces .>>? keyword "fun" .>>? spaces1 .>>. (sepBy1 declarationParser spaces1) .>> keyword "->" .>>. expressionParser |>> (fun ((data, parameters), expr) -> Lambda (parameters, expr, data)) <!> "Lambda expression parser"
+    let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> spaces .>>? keyword "fun" .>>? spaces1 .>>. (sepEndBy1 declarationParser spaces1) .>>? keyword "->" .>>. expressionParser |>> (fun ((data, parameters), expr) -> Lambda (parameters, expr, data)) <!> "Lambda expression parser"
 
     let endParser = keyword "end" 
 
