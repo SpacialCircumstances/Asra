@@ -90,7 +90,7 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let ifParser: Parser<Expression<'data>, unit> = dataParser .>> skipString "if" .>> spaces1 .>>. functionExpressionParser .>> skipString "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> skipString "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <!> "If expression parser"
 
-    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. expressionParser .>>? spaces1 .>>.? (sepBy1 functionExpressionParser spaces1) .>> spaces |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
+    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? spaces1 .>>.? (sepBy1 functionExpressionParser spaces1) .>> spaces |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
 
     expressionParserRef := spaces >>. choiceL [
         letParser
