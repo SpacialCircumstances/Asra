@@ -65,7 +65,7 @@ let createParser (dataParser: Parser<'data, unit>) =
     
     let identifierParser: Parser<string, unit> = identifier identifierOptions
     
-    let nameParser = identifierParser >>= (fun s ->
+    let nameParser = identifierParser >>=? (fun s ->
         match s with
             | "->" -> fail ""
             | "=" -> fail ""
@@ -77,7 +77,7 @@ let createParser (dataParser: Parser<'data, unit>) =
             | "end" -> fail ""
             | "else" -> fail ""
             | "import!" -> fail ""
-            | _ -> preturn s) |> attempt
+            | _ -> preturn s)
 
     let declarationParser = nameParser |>> Named <!> "Declaration parser"
 
