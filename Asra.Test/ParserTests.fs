@@ -44,3 +44,21 @@ let ``Variable and group parsing`` () =
         let res = testParser code
         assertEqResult expectedAst res
     )
+
+[<Fact>]
+let ``Lambda parsing`` () =
+    [
+        "fun x y -> test", Lambda ([ Named "x"; Named "y" ], Variable ("test", ()), ())
+        "fun a -> fun b -> b", Lambda (
+            [ 
+                Named "a"
+            ],
+            Lambda ([
+                Named "b"
+            ], Variable ("b", ()), ()), ())
+        "fun t -> ()", Lambda ([ Named "t" ], Literal (Unit, ()), ())
+    ] |>
+    List.iter (fun (code, expectedAst) ->
+        let res = testParser code
+        assertEqResult expectedAst res
+    )
