@@ -25,6 +25,8 @@ let ``Literal parsing`` () =
         "\"\"", String ""
         "\"test\"", String "test"
         "\"hello\\nworld\"", String "hello\nworld"
+        "false", Bool false
+        "true", Bool true
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
@@ -132,7 +134,7 @@ let ``If parsing`` () =
         if true then
             stuff
         else () end
-        """, If (Variable ("true", ()), Variable ("stuff", ()), Literal (Unit, ()), ())
+        """, If (Literal (Bool true, ()), Variable ("stuff", ()), Literal (Unit, ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code

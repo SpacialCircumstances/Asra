@@ -16,6 +16,7 @@ and Literal =
     | Int of int64
     | String of string
     | Float of float
+    | Bool of bool
     | Unit
 
 and Expression<'data> =

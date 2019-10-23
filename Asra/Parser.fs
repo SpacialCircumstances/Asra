@@ -2,7 +2,6 @@
 
 open Ast
 open FParsec
-open FParsec.CharParsers
 
 let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
     fun stream ->
@@ -22,6 +21,10 @@ let createParser (dataParser: Parser<'data, unit>) =
             | false -> float f.String |> Float
     
     let intLiteralParser: Parser<Literal, unit> = pint64 |>> Int
+
+    let mapString (str: string) (res: 'a): Parser<'a, unit> = (skipString str |>> fun _ -> res) <?> str
+    
+    let boolLiteralParser: Parser<Literal, unit> = (mapString "false" false <|> mapString "true" true) |>> Bool
     
     let unitLiteralParser: Parser<Literal, unit> = skipString "()" |>> fun _ -> Unit
     
@@ -47,10 +50,11 @@ let createParser (dataParser: Parser<'data, unit>) =
     
     let literalExpressionParser: Parser<Expression<'data>, unit> = 
         dataParser .>>.
-        choiceL [ 
+        choiceL [
             floatLiteralParser
             intLiteralParser
             stringLiteralParser
+            boolLiteralParser
             unitLiteralParser ] "Literal" |>> (fun (data, lit) -> Literal (lit, data)) <!> "Literal expression parser"
 
     let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> skipChar '(' .>>? spaces .>>. expressionParser .>> spaces .>> skipChar ')' |>> fun (data, expr) -> Group (expr, data)
