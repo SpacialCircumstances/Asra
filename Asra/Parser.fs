@@ -80,21 +80,21 @@ let createParser (dataParser: Parser<'data, unit>) =
 
     let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> (fun (data, name) -> Variable (name, data)) <!> "Variable expression parser"
 
-    let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> spaces .>>? keyword "fun" .>>? spaces1 .>>. (sepEndBy1 declarationParser spaces1) .>>? keyword "->" .>>. expressionParser |>> (fun ((data, parameters), expr) -> Lambda (parameters, expr, data)) <!> "Lambda expression parser"
+    let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "fun" .>>? spaces1 .>>.? (sepEndBy1 declarationParser spaces1) .>>? keyword "->" .>> spaces1 .>>. expressionParser |>> (fun ((data, parameters), expr) -> Lambda (parameters, expr, data)) <!> "Lambda expression parser"
 
-    let endParser = keyword "end" 
+    let endParser = keyword "end"
 
-    let bindingParser: Parser<LetBinding<'data>, unit> = declarationParser .>> spaces .>> skipChar '=' .>> spaces .>>. expressionParser |>> LetBinding <!> "Let binding parser"
+    let bindingParser: Parser<LetBinding<'data>, unit> = declarationParser .>> spaces1 .>> skipChar '=' .>> spaces1 .>>. expressionParser |>> LetBinding <!> "Let binding parser"
 
-    let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepEndBy1 bindingParser spaces) .>> keyword "in" .>>. expressionParser .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <!> "Let expression parser"
+    let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepEndBy1 bindingParser spaces1) .>> keyword "in" .>> spaces1 .>>. expressionParser .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <!> "Let expression parser"
 
-    let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "import!" .>> spaces .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <!> "Import expression parser"
+    let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "import!" .>> spaces1 .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <!> "Import expression parser"
 
-    let ifParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "if" .>> spaces1 .>>. functionExpressionParser .>> keyword "then" .>> spaces1 .>>. expressionParser .>> keyword "else" .>> spaces1 .>>. expressionParser .>> spaces .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <!> "If expression parser"
+    let ifParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "if" .>> spaces1 .>>. functionExpressionParser .>> spaces1 .>> keyword "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> keyword "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <!> "If expression parser"
 
-    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? spaces1 .>>.? (sepBy1 functionExpressionParser spaces1) .>> spaces |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
+    let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? spaces1 .>>.? (sepBy1 functionExpressionParser spaces1) |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <!> "Function call expression parser"
 
-    expressionParserRef := spaces >>. choiceL [
+    expressionParserRef := choiceL [
         letParser
         lambdaExpressionParser
         importParser
@@ -102,14 +102,16 @@ let createParser (dataParser: Parser<'data, unit>) =
         literalExpressionParser
         groupExpressionParser
         functionCallParser
-        variableExpressionParser ] "Expression" .>> spaces <!> "Expression parser"
+        variableExpressionParser ] "Expression" <!> "Expression parser"
 
-    functionExpressionParserRef := spaces >>. choiceL [
-        variableExpressionParser
+    functionExpressionParserRef := choiceL [
         literalExpressionParser
-        groupExpressionParser ] "Expression" .>> spaces <!> "Function expression parser"
+        variableExpressionParser
+        groupExpressionParser ] "Expression" <!> "Function expression parser"
 
-    let parse (name: string) (code: string) = match CharParsers.runParserOnString expressionParser () name code with
+    let programParser = spaces >>. expressionParser .>> spaces
+
+    let parse (name: string) (code: string) = match CharParsers.runParserOnString programParser () name code with
                                                 | Success (res, _, _) -> Result.Ok res
                                                 | Failure (es, _, _) -> Result.Error es
 
