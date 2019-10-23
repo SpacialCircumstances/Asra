@@ -3,13 +3,16 @@
 open Ast
 open FParsec
 
-let createParser (dataParser: Parser<'data, unit>) (write: string -> unit) =
+let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) option) =
     let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
-        fun stream ->
-            write (sprintf "%A: Entering %s" stream.Position label)
-            let reply = p stream
-            write (sprintf "%A: Leaving %s (%A)" stream.Position label reply.Status)
-            reply
+        match logger with
+            | Some write ->
+                fun stream ->
+                    write (sprintf "%A: Entering %s" stream.Position label)
+                    let reply = p stream
+                    write (sprintf "%A: Leaving %s (%A)" stream.Position label reply.Status)
+                    reply
+            | None -> p
 
     let (expressionParser: Parser<Expression<'data>, unit>, expressionParserRef) = createParserForwardedToRef ()
 
@@ -131,4 +134,6 @@ let createParser (dataParser: Parser<'data, unit>) (write: string -> unit) =
 
     parse
 
-let testParser = createParser (preturn ()) (fun s -> System.Diagnostics.Debug.WriteLine s) "Test"
+let testLogger (s: string) = System.Diagnostics.Debug.WriteLine s
+
+let testParser = createParser (preturn ()) (Some testLogger) "Test"
