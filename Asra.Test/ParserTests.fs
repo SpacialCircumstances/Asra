@@ -104,3 +104,22 @@ let ``Let parsing`` () =
         let res = testParser code
         assertEqResult expectedAst res
     )
+
+[<Fact>]
+let ``Import parsing`` () =
+    [
+        "import! Test", Import ("Test", ())
+        """
+        let
+            x = 2
+            test = import! Test
+        in test end
+        """, Let ([
+            Named "x", Literal (Int 2L, ())
+            Named "test", Import ("Test", ())
+        ], Variable ("test", ()), ())
+    ] |>
+    List.iter (fun (code, expectedAst) ->
+        let res = testParser code
+        assertEqResult expectedAst res
+    )
