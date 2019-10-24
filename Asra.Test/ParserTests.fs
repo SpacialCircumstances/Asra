@@ -101,6 +101,25 @@ let ``Let parsing`` () =
             None, Named "id", Lambda ([ Named "x" ], Variable ("x", ()), ())
             None, Named "m", Group (Lambda ([ Named "y" ], Variable ("y", ()), ()), ())
         ], Variable ("w", ()), ())
+        """
+        let
+            id = fun x -> x
+            rec fac = fun i -> multiply (fac (substract i 1)) i
+        in fac 3 end
+        """, Let([
+            None, Named "id", Lambda ([ Named "x" ], Variable ("x", ()), ())
+            Some Recursive, Named "fac", Lambda ([
+                Named "i"
+            ], FunctionCall (Variable ("multiply", ()), [
+                Group (FunctionCall (Variable ("fac", ()), [
+                    Group (
+                        FunctionCall (Variable ("substract", ()), [
+                            Variable ("i", ())
+                            Literal (Int 1L, ())
+                        ], ())
+                    , ())
+                    Variable ("i", ()) ], ()), ()) ], ()), ())
+        ], FunctionCall (Variable ("fac", ()), [ Literal (Int 3L, ()) ], ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
