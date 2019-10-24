@@ -147,11 +147,15 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
         namedTypeParser
     ] "Type"
 
-    let typeAnnotatedParser = nameParser .>>? spaces .>>? skipChar ':' .>>? spaces .>>.? typeDeclarationParser |>> TypeAnnotated
+    let identifierNameParser = 
+        let opParser = attempt (between leftParensParser rightParensParser operatorParser)
+        opParser <|> nameParser
 
-    let declarationParser = (between leftParensParser rightParensParser typeAnnotatedParser) <|> (nameParser |>> Named) <?> "Declaration" <!> "Declaration parser"
+    let typeAnnotatedParser = identifierNameParser .>>? spaces .>>? skipChar ':' .>>? spaces .>>.? typeDeclarationParser |>> TypeAnnotated
 
-    let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> (fun (data, name) -> Variable (name, data)) <?> "Variable expression" <!> "Variable expression parser"
+    let declarationParser = (between leftParensParser rightParensParser typeAnnotatedParser) <|> (identifierNameParser |>> Named) <?> "Declaration" <!> "Declaration parser"
+
+    let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. identifierNameParser |>> (fun (data, name) -> Variable (name, data)) <?> "Variable expression" <!> "Variable expression parser"
 
     let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "fun" .>>? spaces1 .>>.? (sepEndBy1 declarationParser spaces1) .>>? keyword "->" .>> spaces1 .>>. expressionParser |>> (fun ((data, parameters), expr) -> Lambda (parameters, expr, data)) <?> "Lambda expression" <!> "Lambda expression parser"
 
@@ -166,8 +170,6 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
     let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "import" .>> spaces1 .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <?> "Import expression" <!> "Import expression parser"
 
     let ifParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "if" .>> spaces1 .>>. functionExpressionParser .>> spaces1 .>> keyword "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> keyword "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <?> "If expression" <!> "If expression parser"
-
-    let operatorAsFunctionParser: Parser<Expression<'data>, unit> = dataParser .>>. attempt (between leftParensParser rightParensParser operatorParser) |>> (fun (data, op) -> OperatorAsFunction (op, data)) <?> "Operator expression"
 
     let unaryOperatorParser: Parser<Expression<'data>, unit> = dataParser .>>. operatorParser .>>? spaces .>>.? functionExpressionParser |>> (fun ((data, op), expr) -> UnaryOperatorCall (op, expr, data)) <?> "Unary operator expression"
 
@@ -186,23 +188,20 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
         binaryOperatorParser
         unaryOperatorParser
         functionCallParser
-        operatorAsFunctionParser
-        groupExpressionParser
-        variableExpressionParser ] "Expression" <!> "Expression parser"
+        variableExpressionParser
+        groupExpressionParser ] "Expression" <!> "Expression parser"
 
     functionAndOperatorParserRef := choiceL [
         binaryOperatorParser
         literalExpressionParser
         variableExpressionParser
         unaryOperatorParser
-        operatorAsFunctionParser
         groupExpressionParser ] "Expression" <!> "Function expression parser"
 
     functionExpressionParserRef := choiceL [
         literalExpressionParser
         variableExpressionParser
         unaryOperatorParser
-        operatorAsFunctionParser
         groupExpressionParser ] "Expression" <!> "Function expression parser"
 
     let programParser = spaces >>. expressionParser .>> spaces

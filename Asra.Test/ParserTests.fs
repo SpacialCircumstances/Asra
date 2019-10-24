@@ -265,7 +265,7 @@ let ``Function call parsing`` () =
 [<Fact>]
 let ``Operator parsing`` () =
     [
-        "(+) 1 2", FunctionCall (OperatorAsFunction ("+", ()), [
+        "(+) 1 2", FunctionCall (Variable ("+", ()), [
             Literal (Int 1L, ())
             Literal (Int 2L, ())
         ], ())
