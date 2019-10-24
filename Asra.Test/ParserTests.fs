@@ -278,6 +278,20 @@ let ``Operator parsing`` () =
             "+",
             Group (BinaryOperatorCall (Literal (Int 3L, ()), "-", Literal (Int 4L, ()), ()), ()),
             ())
+        """
+        let 
+            ((+): Int -> Int) = fun a b -> plus a b
+        in
+            2 + -12
+        end
+        """, Let ([
+            None, TypeAnnotated ("+", Function (Name "Int", Name "Int")), Lambda ([
+                Named "a"
+                Named "b"
+            ], FunctionCall (Variable ("plus", ()), [
+                Variable ("a", ())
+                Variable ("b", ())], ()), ())
+        ], BinaryOperatorCall (Literal (Int 2L, ()), "+", Literal (Int -12L, ()), ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
