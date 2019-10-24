@@ -18,6 +18,7 @@ let operatorChars = set [
     '&'
     '?'
     '|'
+    '!'
 ]
 
 let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) option) =
