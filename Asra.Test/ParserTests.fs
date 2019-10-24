@@ -127,6 +127,18 @@ let ``Let parsing`` () =
     )
 
 [<Fact>]
+let ``Let with annotations`` () =
+    [
+        "let x: Int = 2 in x end", Let ([
+            None, TypeAnnotated ("x", Name "Int"), Literal (Int 2L, ())
+        ], Variable ("x", ()), ())
+    ] |>
+    List.iter (fun (code, expectedAst) ->
+        let res = testParser code
+        assertEqResult expectedAst res
+    )
+
+[<Fact>]
 let ``Import parsing`` () =
     [
         "import! Test", Import ("Test", ())
