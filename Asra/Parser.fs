@@ -18,6 +18,10 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let (functionExpressionParser: Parser<Expression<'data>, unit>, functionExpressionParserRef) = createParserForwardedToRef ()
 
+    let leftParensParser = skipChar '(' .>> spaces
+
+    let rightParensParser = spaces .>> skipChar ')'
+
     let floatLiteralParser: Parser<Literal, unit> = numberLiteral (NumberLiteralOptions.DefaultFloat) "Float literal" |>> (fun f -> 
         match f.IsInteger with
             | true -> int64 f.String |> Int
@@ -60,9 +64,9 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
             boolLiteralParser
             unitLiteralParser ] "Literal" |>> (fun (data, lit) -> Literal (lit, data)) <?> "Literal expression" <!> "Literal expression parser"
 
-    let groupExpressionParser: Parser<Expression<'data>, unit> = (dataParser .>> skipChar '(' .>>? spaces .>>. expressionParser .>> spaces .>> skipChar ')' |>> fun (data, expr) -> Group (expr, data)) <?> "Group expression" <!> "Group expression parser"
+    let groupExpressionParser: Parser<Expression<'data>, unit> = (dataParser .>> leftParensParser .>>. expressionParser .>> rightParensParser |>> fun (data, expr) -> Group (expr, data)) <?> "Group expression" <!> "Group expression parser"
 
-    let isSeparator (c: char) = System.Char.IsWhiteSpace c || c = ')' || c = '('
+    let isSeparator (c: char) = System.Char.IsWhiteSpace c || c = ')' || c = '(' || c = ':'
     
     let isIdentifierStart (c: char) = (not (isDigit c)) && not (isSeparator c)
     
@@ -102,7 +106,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let genericTypeParser = skipChar ''' >>? nameParser |>> Generic
 
-    let groupedTypeParser = between (skipChar '(' .>> spaces) (spaces .>> skipChar ')') typeDeclarationParser
+    let groupedTypeParser = between leftParensParser rightParensParser typeDeclarationParser
 
     let appliedTypeParser = nameParser .>>? spaces1 .>>.? sepBy1 simpleTypeDeclarationParser spaces1 |>> Parameterized
 
@@ -122,7 +126,9 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
         appliedTypeParser
     ] "Type"
 
-    let declarationParser = (nameParser |>> Named) <|> (nameParser .>>? spaces .>>? skipChar ':' .>>? spaces .>>.? typeDeclarationParser |>> TypeAnnotated) <?> "Declaration" <!> "Declaration parser"
+    let typeAnnotatedParser = nameParser .>>? spaces .>>? skipChar ':' .>>? spaces .>>.? typeDeclarationParser |>> TypeAnnotated
+
+    let declarationParser = (between leftParensParser rightParensParser typeAnnotatedParser) <|> (nameParser |>> Named) <?> "Declaration" <!> "Declaration parser"
 
     let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> (fun (data, name) -> Variable (name, data)) <?> "Variable expression" <!> "Variable expression parser"
 
