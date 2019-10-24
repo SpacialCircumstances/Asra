@@ -138,6 +138,26 @@ let ``Let with annotations`` () =
         "let (test: (Int)) = 4 in test end", Let ([
             None, TypeAnnotated ("test", Name "Int"), Literal (Int 4L, ())
         ], Variable ("test", ()), ())
+        "fun (y: Int -> Int) -> y 2", Lambda([
+            TypeAnnotated ("y", Function (Name "Int", Name "Int"))
+        ], FunctionCall (Variable ("y", ()), [ Literal (Int 2L, ()) ], ()), ())
+        "fun (x: 'a) -> \"test\"", Lambda([
+            TypeAnnotated ("x", Generic "a")
+        ], Literal (String "test", ()), ())
+        "fun (x: 'a) (xs: List 'a) -> append xs x", Lambda([
+            TypeAnnotated ("x", Generic "a")
+            TypeAnnotated ("xs", Parameterized ("List", [
+                Generic "a"
+            ]))
+        ], FunctionCall (Variable ("append", ()), [
+                Variable ("xs", ())
+                Variable ("x", ()) ], ()), ())
+        "let (z: Map (List String) 'value) = newMap in z end", Let([
+            None, TypeAnnotated ("z", Parameterized ("Map", [
+                Parameterized ("List", [ Name "String" ])
+                Generic "value"
+            ])), Variable ("newMap", ())
+        ], Variable("z", ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
