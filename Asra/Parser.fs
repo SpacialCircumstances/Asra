@@ -139,7 +139,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepEndBy1 bindingParser spaces1) .>> keyword "in" .>> spaces1 .>>. expressionParser .>> spaces .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <?> "Let expression" <!> "Let expression parser"
 
-    let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "import!" .>> spaces1 .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <?> "Import expression" <!> "Import expression parser"
+    let importParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "import" .>> spaces1 .>>. nameParser |>> (fun (data, name) -> Import (name, data)) <?> "Import expression" <!> "Import expression parser"
 
     let ifParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "if" .>> spaces1 .>>. functionExpressionParser .>> spaces1 .>> keyword "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> keyword "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <?> "If expression" <!> "If expression parser"
 

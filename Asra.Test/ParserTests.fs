@@ -166,11 +166,11 @@ let ``Let with annotations`` () =
 [<Fact>]
 let ``Import parsing`` () =
     [
-        "import! Test", Import ("Test", ())
+        "import Test", Import ("Test", ())
         """
         let
             x = 2
-            test = import! Test
+            test = import Test
         in test end
         """, Let ([
             None, Named "x", Literal (Int 2L, ())
