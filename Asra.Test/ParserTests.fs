@@ -12,43 +12,24 @@ let assertEqResult (expected: 'a) (got: Result<'a, 'b>) =
                     | Ok g -> g
     Assert.Equal<'a>(expected, gotR)
 
-[<Fact>]
-let ``Literal parsing`` () =
+let testCases () =
     [
-        "12", Int 12L
-        "2188", Int 2188L
-        "-21", Int -21L
-        "002", Int 2L
-        "322.32", Float 322.32
-        "-123.0", Float -123.0
-        "()", Unit
-        "\"\"", String ""
-        "\"test\"", String "test"
-        "\"hello\\nworld\"", String "hello\nworld"
-        "false", Bool false
-        "true", Bool true
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult (Literal (expectedAst, ())) res
-    )
-
-[<Fact>]
-let ``Variable and group parsing`` () =
-    [
+        "12", Literal (Int 12L, ())
+        "2188", Literal (Int 2188L, ())
+        "-21", Literal (Int -21L, ())
+        "002", Literal (Int 2L, ())
+        "322.32", Literal (Float 322.32, ())
+        "-123.0", Literal (Float -123.0, ())
+        "()", Literal (Unit, ())
+        "\"\"", Literal (String "", ())
+        "\"test\"", Literal (String "test", ())
+        "\"hello\\nworld\"", Literal (String "hello\nworld", ())
+        "false", Literal (Bool false, ())
+        "true", Literal (Bool true, ())
         "test", Variable ("test", ())
         "(  test)", Group (Variable ("test", ()), ())
         "(12)", Group (Literal (Int 12L, ()), ())
         "(())", Group (Literal (Unit, ()), ())
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult expectedAst res
-    )
-
-[<Fact>]
-let ``Lambda parsing`` () =
-    [
         "fun x y -> test", Lambda ([ Named "x"; Named "y" ], Variable ("test", ()), ())
         "fun a -> fun b -> b", Lambda (
             [ 
@@ -58,15 +39,6 @@ let ``Lambda parsing`` () =
                 Named "b"
             ], Variable ("b", ()), ()), ())
         "fun t -> ()", Lambda ([ Named "t" ], Literal (Unit, ()), ())
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult expectedAst res
-    )
-
-[<Fact>]
-let ``Let parsing`` () =
-    [
         """
         let 
             x = fun y -> y
@@ -119,15 +91,6 @@ let ``Let parsing`` () =
                     , ()) ], ()), ());
                  Variable ("i", ()) ], ()), ())
         ], FunctionCall (Variable ("fac", ()), [ Literal (Int 3L, ()) ], ()), ())
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult expectedAst res
-    )
-
-[<Fact>]
-let ``Let with annotations`` () =
-    [
         "let (x: Int) = 2 in x end", Let ([
             None, TypeAnnotated ("x", Name "Int"), Literal (Int 2L, ())
         ], Variable ("x", ()), ())
@@ -166,15 +129,6 @@ let ``Let with annotations`` () =
                 Name "Int"
             ]), Generic "a"))
         ], Variable ("a", ()), ())
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult expectedAst res
-    )
-
-[<Fact>]
-let ``Import parsing`` () =
-    [
         "import Test", Import ("Test", ())
         """
         let
@@ -185,30 +139,12 @@ let ``Import parsing`` () =
             None, Named "x", Literal (Int 2L, ())
             None, Named "test", Import ("Test", ())
         ], Variable ("test", ()), ())
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult expectedAst res
-    )
-
-[<Fact>]
-let ``If parsing`` () =
-    [
         "if x then a else b end", If (Variable ("x", ()), Variable ("a", ()), Variable ("b", ()), ())
         """
         if true then
             stuff
         else () end
         """, If (Literal (Bool true, ()), Variable ("stuff", ()), Literal (Unit, ()), ())
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult expectedAst res
-    )
-
-[<Fact>]
-let ``Function call parsing`` () =
-    [
         "f x", FunctionCall (Variable ("f", ()), [
             Variable ("x", ())
         ], ())
@@ -265,15 +201,6 @@ let ``Function call parsing`` () =
                 Variable ("a", ())
                 Variable ("b", ())
             ], ()), ())
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult expectedAst res
-    )
-
-[<Fact>]
-let ``Operator parsing`` () =
-    [
         "(+) 1 2", FunctionCall (Variable ("+", ()), [
             Literal (Int 1L, ())
             Literal (Int 2L, ())
@@ -301,8 +228,9 @@ let ``Operator parsing`` () =
                 Variable ("a", ())
                 Variable ("b", ())], ()), ())
         ], BinaryOperatorCall (Literal (Int 2L, ()), "+", Literal (Int -12L, ()), ()), ())
-    ] |>
-    List.iter (fun (code, expectedAst) ->
-        let res = testParser code
-        assertEqResult expectedAst res
-    )
+    ] |> Seq.map (fun (code, ast) -> [| box code; box ast|])
+
+[<Theory>]
+[<MemberData("testCases")>]
+let ``Parse expressions`` (code: string, ast: Expression<unit>) =
+    assertEqResult ast (testParser code)
