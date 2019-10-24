@@ -99,8 +99,10 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
     let lambdaExpressionParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "fun" .>>? spaces1 .>>.? (sepEndBy1 declarationParser spaces1) .>>? keyword "->" .>> spaces1 .>>. expressionParser |>> (fun ((data, parameters), expr) -> Lambda (parameters, expr, data)) <?> "Lambda expression" <!> "Lambda expression parser"
 
     let endParser = keyword "end"
+    
+    let modifierParser = mapString "rec" Recursive |> opt
 
-    let bindingParser: Parser<LetBinding<'data>, unit> = declarationParser .>> spaces1 .>> skipChar '=' .>> spaces1 .>>. expressionParser |>> LetBinding  <?> "Let binding" <!> "Let binding parser"
+    let bindingParser: Parser<LetBinding<'data>, unit> = modifierParser .>> spaces .>>. declarationParser .>> spaces1 .>> skipChar '=' .>> spaces1 .>>. expressionParser |>> (fun ((modifier, decl), expr) -> LetBinding (modifier, decl, expr))  <?> "Let binding" <!> "Let binding parser"
 
     let letParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "let" .>>? spaces1 .>>. (sepEndBy1 bindingParser spaces1) .>> keyword "in" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun ((data, bindings), expr) -> Let (bindings, expr, data)) <?> "Let expression" <!> "Let expression parser"
 

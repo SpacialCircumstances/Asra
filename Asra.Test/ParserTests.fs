@@ -75,7 +75,7 @@ let ``Let parsing`` () =
             x
         end
         """, Let ([
-            Named "x", Lambda ([ Named "y" ], Variable ("y", ()), ())
+            None, Named "x", Lambda ([ Named "y" ], Variable ("y", ()), ())
         ], Variable ("x", ()), ())
         """
         let a = 2 in
@@ -84,9 +84,9 @@ let ``Let parsing`` () =
         end
         end
         """, Let ([
-            Named "a", Literal (Int 2L, ())
+            None, Named "a", Literal (Int 2L, ())
         ], Let([
-            Named "b", Literal (String "test", ())
+            None, Named "b", Literal (String "test", ())
         ], Lambda ([ Named "x" ], Variable ("a", ()), ()), ()), ())
         """
         let
@@ -97,9 +97,9 @@ let ``Let parsing`` () =
             w
         end
         """, Let ([
-            Named "w", Literal (Int 12L, ())
-            Named "id", Lambda ([ Named "x" ], Variable ("x", ()), ())
-            Named "m", Group (Lambda ([ Named "y" ], Variable ("y", ()), ()), ())
+            None, Named "w", Literal (Int 12L, ())
+            None, Named "id", Lambda ([ Named "x" ], Variable ("x", ()), ())
+            None, Named "m", Group (Lambda ([ Named "y" ], Variable ("y", ()), ()), ())
         ], Variable ("w", ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
@@ -117,8 +117,8 @@ let ``Import parsing`` () =
             test = import! Test
         in test end
         """, Let ([
-            Named "x", Literal (Int 2L, ())
-            Named "test", Import ("Test", ())
+            None, Named "x", Literal (Int 2L, ())
+            None, Named "test", Import ("Test", ())
         ], Variable ("test", ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
@@ -187,11 +187,11 @@ let ``Function call parsing`` () =
         end
         """, 
         Let ([
-                Named "a", FunctionCall (Variable ("f", ()), [
+                None, Named "a", FunctionCall (Variable ("f", ()), [
                     Variable ("x", ())
                     Variable ("y", ())
                 ], ())
-                Named "b", FunctionCall (Variable ("g", ()), [
+                None, Named "b", FunctionCall (Variable ("g", ()), [
                     Variable ("c", ())
                     Variable ("d", ())
                 ], ())

@@ -10,7 +10,10 @@ type Declaration =
     | Named of string
     | TypeAnnotated of string * TypeDeclaration
 
-type LetBinding<'data> = Declaration * Expression<'data>
+type BindingModifier = 
+    | Recursive
+
+type LetBinding<'data> = (BindingModifier option) * Declaration * Expression<'data>
 
 and Literal =
     | Int of int64
