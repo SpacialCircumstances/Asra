@@ -65,18 +65,12 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
             unitLiteralParser ] "Literal" |>> (fun (data, lit) -> Literal (lit, data)) <?> "Literal expression" <!> "Literal expression parser"
 
     let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. (between leftParensParser rightParensParser expressionParser) |>> (fun (data, expr) -> Group (expr, data)) <?> "Group expression" <!> "Group expression parser"
-
-    let isSeparator (c: char) = System.Char.IsWhiteSpace c || c = ')' || c = '(' || c = ':'
-
+    
     let isIdentifierStart (c: char) = isLetter c || c = '_'
     
     let isIdentifierContinue (c: char) = isLetter c || c = '_' || isDigit c
-    
-    let identifierOptions = IdentifierOptions(isAsciiIdStart = isIdentifierStart, isAsciiIdContinue = isIdentifierContinue)
-    
-    let identifierParser: Parser<string, unit> = identifier identifierOptions
-    
-    let nameParser = identifierParser >>=? (fun s ->
+            
+    let nameParser = (many1Satisfy2 isIdentifierStart isIdentifierContinue) >>=? (fun s ->
         match s with
             | "->" -> fail ""
             | "=" -> fail ""
@@ -87,7 +81,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
             | "then" -> fail ""
             | "end" -> fail ""
             | "else" -> fail ""
-            | "import!" -> fail ""
+            | "import" -> fail ""
             | _ -> preturn s) <?> "Identifier"
 
     let keyword (kw: string) = skipString kw <?> kw <!> (sprintf "%s parser" kw)
