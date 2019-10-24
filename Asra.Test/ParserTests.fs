@@ -117,8 +117,8 @@ let ``Let parsing`` () =
                             Variable ("i", ())
                             Literal (Int 1L, ())
                         ], ())
-                    , ())
-                    Variable ("i", ()) ], ()), ()) ], ()), ())
+                    , ()) ], ()), ());
+                 Variable ("i", ()) ], ()), ())
         ], FunctionCall (Variable ("fac", ()), [ Literal (Int 3L, ()) ], ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
