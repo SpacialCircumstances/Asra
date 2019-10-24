@@ -37,7 +37,6 @@ let ``Literal parsing`` () =
 let ``Variable and group parsing`` () =
     [
         "test", Variable ("test", ())
-        "+", Variable ("+", ())
         "(  test)", Group (Variable ("test", ()), ())
         "(12)", Group (Literal (Int 12L, ()), ())
         "(())", Group (Literal (Unit, ()), ())

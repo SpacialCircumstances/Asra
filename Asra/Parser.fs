@@ -67,10 +67,10 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
     let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. (between leftParensParser rightParensParser expressionParser) |>> (fun (data, expr) -> Group (expr, data)) <?> "Group expression" <!> "Group expression parser"
 
     let isSeparator (c: char) = System.Char.IsWhiteSpace c || c = ')' || c = '(' || c = ':'
+
+    let isIdentifierStart (c: char) = isLetter c || c = '_'
     
-    let isIdentifierStart (c: char) = (not (isDigit c)) && not (isSeparator c)
-    
-    let isIdentifierContinue (c: char) = not (isSeparator c)
+    let isIdentifierContinue (c: char) = isLetter c || c = '_' || isDigit c
     
     let identifierOptions = IdentifierOptions(isAsciiIdStart = isIdentifierStart, isAsciiIdContinue = isIdentifierContinue)
     
