@@ -51,6 +51,7 @@ let testCases () =
         """
         let a = 2 in
         let b = "test" in
+        #asdf
         fun x -> a
         end
         end
@@ -62,7 +63,7 @@ let testCases () =
         """
         let
             w = 12
-            id = fun x -> x
+            id = fun x -> x #qwertz
             m = (fun y -> y)
         in
             w
@@ -132,6 +133,7 @@ let testCases () =
         "import Test", Import ("Test", ())
         """
         let
+            #42
             x = 2
             test = import Test
         in test end
