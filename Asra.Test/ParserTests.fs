@@ -38,7 +38,7 @@ let ``Variable and group parsing`` () =
     [
         "test", Variable ("test", ())
         "+", Variable ("+", ())
-        "(test)", Group (Variable ("test", ()), ())
+        "(  test)", Group (Variable ("test", ()), ())
         "(12)", Group (Literal (Int 12L, ()), ())
         "(())", Group (Literal (Unit, ()), ())
     ] |>
@@ -129,9 +129,15 @@ let ``Let parsing`` () =
 [<Fact>]
 let ``Let with annotations`` () =
     [
-        "let x: Int = 2 in x end", Let ([
+        "let (x: Int) = 2 in x end", Let ([
             None, TypeAnnotated ("x", Name "Int"), Literal (Int 2L, ())
         ], Variable ("x", ()), ())
+        "fun (x: String) -> x", Lambda([
+            TypeAnnotated ("x", Name "String")
+        ], Variable ("x", ()), ())
+        "let (test: (Int)) = 4 in test end", Let ([
+            None, TypeAnnotated ("test", Name "Int"), Literal (Int 4L, ())
+        ], Variable ("test", ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
