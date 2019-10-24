@@ -32,6 +32,14 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
                     reply
             | None -> p
 
+    let commentParser = skipChar '#' .>> skipManyTill anyChar newline
+
+    let whitespaceCharParser = skipSatisfy System.Char.IsWhiteSpace
+
+    let spaces = skipMany (whitespaceCharParser <|> commentParser) <?> "Whitespace"
+
+    let spaces1 = skipMany1 (whitespaceCharParser <|> commentParser) <?> "Whitespace"
+
     let (expressionParser: Parser<Expression<'data>, unit>, expressionParserRef) = createParserForwardedToRef ()
 
     let (functionExpressionParser: Parser<Expression<'data>, unit>, functionExpressionParserRef) = createParserForwardedToRef ()
