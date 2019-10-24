@@ -271,6 +271,13 @@ let ``Operator parsing`` () =
         ], ())
         "- 2", UnaryOperatorCall ("-", Literal (Int 2L, ()), ())
         "!false", UnaryOperatorCall ("!", Literal (Bool false, ()), ())
+        "2 + 2", BinaryOperatorCall (Literal (Int 2L, ()), "+", Literal (Int 2L, ()), ())
+        "1 + 2 + 3", BinaryOperatorCall (Literal (Int 1L, ()), "+", BinaryOperatorCall (Literal (Int 2L, ()), "+", Literal (Int 3L, ()), ()), ())
+        "(1 * 2) + (3 - 4)", BinaryOperatorCall (
+            Group (BinaryOperatorCall (Literal (Int 1L, ()), "*", Literal (Int 2L, ()), ()), ()),
+            "+",
+            Group (BinaryOperatorCall (Literal (Int 3L, ()), "-", Literal (Int 4L, ()), ()), ()),
+            ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
