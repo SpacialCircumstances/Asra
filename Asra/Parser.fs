@@ -1,6 +1,6 @@
 ﻿module Parser
 
-open Ast
+open FrontendAst
 open FParsec
 
 let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) option) =

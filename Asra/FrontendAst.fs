@@ -1,4 +1,4 @@
-﻿module Ast
+﻿module FrontendAst
 
 type TypeDeclaration =
     | Name of string
