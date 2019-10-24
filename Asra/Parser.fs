@@ -86,15 +86,43 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
             | "import!" -> fail ""
             | _ -> preturn s) <?> "Identifier"
 
+    let keyword (kw: string) = skipString kw <?> kw <!> (sprintf "%s parser" kw)
+
     let isSimpleWhitespace (c: char) = c = ' ' || c = '\t'
 
     let ws1 = skipMany1Satisfy isSimpleWhitespace <?> "Whitespace"
 
     let ws = skipManySatisfy isSimpleWhitespace <?> "Whitespace"
 
-    let declarationParser = nameParser |>> Named <?> "Declaration" <!> "Declaration parser"
+    let (typeDeclarationParser: Parser<TypeDeclaration, unit>, typeDeclarationParserRef) = createParserForwardedToRef ()
 
-    let keyword (kw: string) = skipString kw <?> kw <!> (sprintf "%s parser" kw)
+    let (simpleTypeDeclarationParser: Parser<TypeDeclaration, unit>, simpleTypeDeclarationParserRef) = createParserForwardedToRef ()
+
+    let namedTypeParser = nameParser |>> Name
+
+    let genericTypeParser = skipChar ''' >>? nameParser |>> Generic
+
+    let groupedTypeParser = between (skipChar '(' .>> spaces) (spaces .>> skipChar ')') typeDeclarationParser
+
+    let appliedTypeParser = nameParser .>>? spaces1 .>>.? sepBy1 simpleTypeDeclarationParser spaces1 |>> Parameterized
+
+    let functionTypeParser = simpleTypeDeclarationParser .>>? spaces .>>? keyword "->" .>> spaces .>>. typeDeclarationParser |>> Function
+
+    simpleTypeDeclarationParserRef := choiceL [
+        groupedTypeParser
+        genericTypeParser
+        namedTypeParser
+    ] "Type"
+
+    typeDeclarationParserRef := choiceL [
+        groupedTypeParser
+        functionTypeParser
+        genericTypeParser
+        namedTypeParser
+        appliedTypeParser
+    ] "Type"
+
+    let declarationParser = (nameParser |>> Named) <|> (nameParser .>>? spaces .>>? skipChar ':' .>>? spaces .>>.? typeDeclarationParser |>> TypeAnnotated) <?> "Declaration" <!> "Declaration parser"
 
     let variableExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. nameParser |>> (fun (data, name) -> Variable (name, data)) <?> "Variable expression" <!> "Variable expression parser"
 
