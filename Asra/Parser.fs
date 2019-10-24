@@ -64,7 +64,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
             boolLiteralParser
             unitLiteralParser ] "Literal" |>> (fun (data, lit) -> Literal (lit, data)) <?> "Literal expression" <!> "Literal expression parser"
 
-    let groupExpressionParser: Parser<Expression<'data>, unit> = (dataParser .>> leftParensParser .>>. expressionParser .>> rightParensParser |>> fun (data, expr) -> Group (expr, data)) <?> "Group expression" <!> "Group expression parser"
+    let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. (between leftParensParser rightParensParser expressionParser) |>> (fun (data, expr) -> Group (expr, data)) <?> "Group expression" <!> "Group expression parser"
 
     let isSeparator (c: char) = System.Char.IsWhiteSpace c || c = ')' || c = '(' || c = ':'
     
