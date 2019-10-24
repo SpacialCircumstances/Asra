@@ -166,6 +166,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let operatorAsFunctionParser: Parser<Expression<'data>, unit> = dataParser .>>. attempt (between leftParensParser rightParensParser operatorParser) |>> (fun (data, op) -> OperatorAsFunction (op, data)) <?> "Operator expression"
 
+    let unaryOperatorParser: Parser<Expression<'data>, unit> = dataParser .>>. operatorParser .>>? spaces .>>.? functionExpressionParser |>> (fun ((data, op), expr) -> UnaryOperatorCall (op, expr, data))
+
     //TODO: Remove restriction that function calls must happen on one line?
     let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? ws1 .>>.? attempt (many1Till (functionExpressionParser .>>? ws) (followedByString "end" <|> followedByNewline <|> followedByString ")" <|> followedBy eof)) |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <?> "Function call" <!> "Function call expression parser"
 
@@ -175,6 +177,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
         importParser
         ifParser
         literalExpressionParser
+        unaryOperatorParser
         functionCallParser
         operatorAsFunctionParser
         groupExpressionParser
@@ -183,6 +186,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
     functionExpressionParserRef := choiceL [
         literalExpressionParser
         variableExpressionParser
+        unaryOperatorParser
         operatorAsFunctionParser
         groupExpressionParser ] "Expression" <!> "Function expression parser"
 
