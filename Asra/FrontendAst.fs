@@ -31,3 +31,4 @@ and Expression<'data> =
     | FunctionCall of Expression<'data> * (Expression<'data> list) * 'data
     | If of Expression<'data> * Expression<'data> * Expression<'data> * 'data
     | Import of string * 'data
+    | OperatorAsFunction of string * 'data

@@ -3,6 +3,23 @@
 open FrontendAst
 open FParsec
 
+let operatorChars = set [
+    '.'
+    '='
+    '-'
+    '+'
+    '/'
+    '*'
+    '>'
+    '<'
+    '~'
+    '%'
+    '$'
+    '&'
+    '?'
+    '|'
+]
+
 let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) option) =
     let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
         match logger with
@@ -65,7 +82,9 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
             unitLiteralParser ] "Literal" |>> (fun (data, lit) -> Literal (lit, data)) <?> "Literal expression" <!> "Literal expression parser"
 
     let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. (between leftParensParser rightParensParser expressionParser) |>> (fun (data, expr) -> Group (expr, data)) <?> "Group expression" <!> "Group expression parser"
-    
+
+    let isOperator (c: char) = Set.contains c operatorChars
+
     let isIdentifierStart (c: char) = isLetter c || c = '_'
     
     let isIdentifierContinue (c: char) = isLetter c || c = '_' || isDigit c
@@ -84,6 +103,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
                    | "else" -> fail ""
                    | "import" -> fail ""
                    | _ -> preturn s)
+
+    let operatorParser = reservedNameFilteredParser (many1Satisfy isOperator)
 
     let nameParser = reservedNameFilteredParser (many1Satisfy2 isIdentifierStart isIdentifierContinue) <?> "Identifier"
 
@@ -143,6 +164,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let ifParser: Parser<Expression<'data>, unit> = dataParser .>> keyword "if" .>> spaces1 .>>. functionExpressionParser .>> spaces1 .>> keyword "then" .>> spaces1 .>>. expressionParser .>> spaces1 .>> keyword "else" .>> spaces1 .>>. expressionParser .>> spaces1 .>> endParser |>> (fun (((data, condExpr), ifBodyExpr), elseBodyExpr) -> If (condExpr, ifBodyExpr, elseBodyExpr, data)) <?> "If expression" <!> "If expression parser"
 
+    let operatorAsFunctionParser: Parser<Expression<'data>, unit> = dataParser .>>. attempt (between leftParensParser rightParensParser operatorParser) |>> (fun (data, op) -> OperatorAsFunction (op, data)) <?> "Operator expression"
+
     //TODO: Remove restriction that function calls must happen on one line?
     let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? ws1 .>>.? attempt (many1Till (functionExpressionParser .>>? ws) (followedByString "end" <|> followedByNewline <|> followedByString ")" <|> followedBy eof)) |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <?> "Function call" <!> "Function call expression parser"
 
@@ -153,12 +176,14 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
         ifParser
         literalExpressionParser
         functionCallParser
+        operatorAsFunctionParser
         groupExpressionParser
         variableExpressionParser ] "Expression" <!> "Expression parser"
 
     functionExpressionParserRef := choiceL [
         literalExpressionParser
         variableExpressionParser
+        operatorAsFunctionParser
         groupExpressionParser ] "Expression" <!> "Function expression parser"
 
     let programParser = spaces >>. expressionParser .>> spaces

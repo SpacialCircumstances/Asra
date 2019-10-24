@@ -256,6 +256,10 @@ let ``Function call parsing`` () =
                 Variable ("a", ())
                 Variable ("b", ())
             ], ()), ())
+        "(+) 1 2", FunctionCall (OperatorAsFunction ("+", ()), [
+            Literal (Int 1L, ())
+            Literal (Int 2L, ())
+        ], ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
