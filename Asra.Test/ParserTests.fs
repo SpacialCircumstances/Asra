@@ -157,6 +157,15 @@ let ``Let with annotations`` () =
                 Generic "value"
             ])), Variable ("newMap", ())
         ], Variable("z", ()), ())
+        "fun (a: (Int -> Int) -> String) (b: String -> 'a -> 'a) -> true", Lambda ([
+            TypeAnnotated ("a", Function (Function (Name "Int", Name "Int"), Name "String"))
+            TypeAnnotated ("b", Function (Name "String", (Function (Generic "a", Generic "a"))))
+        ], Literal (Bool true, ()), ())
+        "fun (a: (List Int) -> 'a) -> a", Lambda ([
+            TypeAnnotated ("a", Function (Parameterized ("List", [
+                Name "Int"
+            ]), Generic "a"))
+        ], Variable ("a", ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
