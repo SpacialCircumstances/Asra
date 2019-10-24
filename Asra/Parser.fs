@@ -70,19 +70,22 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
     
     let isIdentifierContinue (c: char) = isLetter c || c = '_' || isDigit c
             
-    let nameParser = (many1Satisfy2 isIdentifierStart isIdentifierContinue) >>=? (fun s ->
-        match s with
-            | "->" -> fail ""
-            | "=" -> fail ""
-            | "fun" -> fail ""
-            | "let" -> fail ""
-            | "in" -> fail ""
-            | "if" -> fail ""
-            | "then" -> fail ""
-            | "end" -> fail ""
-            | "else" -> fail ""
-            | "import" -> fail ""
-            | _ -> preturn s) <?> "Identifier"
+    let reservedNameFilteredParser (p: Parser<string, unit>) =
+        p >>=? (fun s ->
+            match s with
+                   | "->" -> fail ""
+                   | "=" -> fail ""
+                   | "fun" -> fail ""
+                   | "let" -> fail ""
+                   | "in" -> fail ""
+                   | "if" -> fail ""
+                   | "then" -> fail ""
+                   | "end" -> fail ""
+                   | "else" -> fail ""
+                   | "import" -> fail ""
+                   | _ -> preturn s)
+
+    let nameParser = reservedNameFilteredParser (many1Satisfy2 isIdentifierStart isIdentifierContinue) <?> "Identifier"
 
     let keyword (kw: string) = skipString kw <?> kw <!> (sprintf "%s parser" kw)
 
