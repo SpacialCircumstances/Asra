@@ -256,10 +256,21 @@ let ``Function call parsing`` () =
                 Variable ("a", ())
                 Variable ("b", ())
             ], ()), ())
+    ] |>
+    List.iter (fun (code, expectedAst) ->
+        let res = testParser code
+        assertEqResult expectedAst res
+    )
+
+[<Fact>]
+let ``Operator parsing`` () =
+    [
         "(+) 1 2", FunctionCall (OperatorAsFunction ("+", ()), [
             Literal (Int 1L, ())
             Literal (Int 2L, ())
         ], ())
+        "- 2", UnaryOperatorCall ("-", Literal (Int 2L, ()), ())
+        "!false", UnaryOperatorCall ("!", Literal (Bool false, ()), ())
     ] |>
     List.iter (fun (code, expectedAst) ->
         let res = testParser code
