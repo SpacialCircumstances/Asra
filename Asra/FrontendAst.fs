@@ -33,3 +33,4 @@ and Expression<'data> =
     | Import of string * 'data
     | OperatorAsFunction of string * 'data
     | UnaryOperatorCall of string * Expression<'data> * 'data
+    | BinaryOperatorCall of Expression<'data> * string * Expression<'data> * 'data

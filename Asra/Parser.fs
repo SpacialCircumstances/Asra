@@ -36,6 +36,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let (functionExpressionParser: Parser<Expression<'data>, unit>, functionExpressionParserRef) = createParserForwardedToRef ()
 
+    let (functionAndOperatorExpressionParser: Parser<Expression<'data>, unit>, functionAndOperatorParserRef) = createParserForwardedToRef ()
+
     let leftParensParser = skipChar '(' .>> spaces
 
     let rightParensParser = spaces .>> skipChar ')'
@@ -167,7 +169,9 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let operatorAsFunctionParser: Parser<Expression<'data>, unit> = dataParser .>>. attempt (between leftParensParser rightParensParser operatorParser) |>> (fun (data, op) -> OperatorAsFunction (op, data)) <?> "Operator expression"
 
-    let unaryOperatorParser: Parser<Expression<'data>, unit> = dataParser .>>. operatorParser .>>? spaces .>>.? functionExpressionParser |>> (fun ((data, op), expr) -> UnaryOperatorCall (op, expr, data))
+    let unaryOperatorParser: Parser<Expression<'data>, unit> = dataParser .>>. operatorParser .>>? spaces .>>.? functionExpressionParser |>> (fun ((data, op), expr) -> UnaryOperatorCall (op, expr, data)) <?> "Unary operator expression"
+
+    let binaryOperatorParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? spaces .>>.? operatorParser .>>? spaces .>>.? functionAndOperatorExpressionParser |>> (fun (((data, expr1), op), expr2) -> BinaryOperatorCall (expr1, op, expr2, data))
 
     //TODO: Remove restriction that function calls must happen on one line?
     let functionCallParser: Parser<Expression<'data>, unit> = dataParser .>>. functionExpressionParser .>>? ws1 .>>.? attempt (many1Till (functionExpressionParser .>>? ws) (followedByString "end" <|> followedByNewline <|> followedByString ")" <|> followedBy eof)) |>> (fun ((data, funExpr), argExprs) -> FunctionCall (funExpr, argExprs, data)) <?> "Function call" <!> "Function call expression parser"
@@ -177,12 +181,22 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
         lambdaExpressionParser
         importParser
         ifParser
+        binaryOperatorParser
         literalExpressionParser
+        binaryOperatorParser
         unaryOperatorParser
         functionCallParser
         operatorAsFunctionParser
         groupExpressionParser
         variableExpressionParser ] "Expression" <!> "Expression parser"
+
+    functionAndOperatorParserRef := choiceL [
+        binaryOperatorParser
+        literalExpressionParser
+        variableExpressionParser
+        unaryOperatorParser
+        operatorAsFunctionParser
+        groupExpressionParser ] "Expression" <!> "Function expression parser"
 
     functionExpressionParserRef := choiceL [
         literalExpressionParser
