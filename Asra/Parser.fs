@@ -131,7 +131,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let parameterizedTypeParser = nameParser .>>? spaces1 .>>.? sepBy1 simpleTypeDeclarationParser spaces1 |>> Parameterized
 
-    let functionTypeParser = simpleTypeDeclarationParser .>>? spaces .>>? keyword "->" .>> spaces .>>. typeDeclarationParser |>> Function
+    let functionTypeParser = simpleTypeDeclarationParser .>>? spaces .>>? keyword "->" .>>? spaces .>>. typeDeclarationParser |>> Function
 
     simpleTypeDeclarationParserRef := choiceL [
         groupedTypeParser
@@ -141,8 +141,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     typeDeclarationParserRef := choiceL [
         parameterizedTypeParser
-        groupedTypeParser
         functionTypeParser
+        groupedTypeParser
         genericTypeParser
         namedTypeParser
     ] "Type"
