@@ -39,3 +39,6 @@ with
                 | Version -> "Print the version of Asra and exit"
                 | Repl _ -> "Launch the REPL (no interpretation, only AST/IR/TIR)"
                 | CompileFile _ -> "Compile a file to Javascript"
+
+let run (args: ParseResults<Arguments>) =
+    ()
