@@ -41,4 +41,10 @@ with
                 | CompileFile _ -> "Compile a file to Javascript"
 
 let run (args: ParseResults<Arguments>) =
-    ()
+    let results = args.GetAllResults()
+    if List.isEmpty results then
+        printfn "%s" (args.Parser.PrintUsage ())
+        255
+    else
+        printfn "Different arg"
+        0

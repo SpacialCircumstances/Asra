@@ -5,6 +5,10 @@ open System
 let main argv =
     let errorHandler = ProcessExiter(colorizer = function ErrorCode.HelpText -> None | _ -> Some ConsoleColor.Red)
     let parser = ArgumentParser.Create<CLI.Arguments>(programName="asra", errorHandler = errorHandler)
-    let results = parser.Parse argv
-    CLI.run results
-    0
+    try 
+        let results = parser.Parse(inputs=argv, raiseOnUsage=true)
+        CLI.run results
+    with
+        | e -> 
+            printfn "%s" e.Message
+            255
