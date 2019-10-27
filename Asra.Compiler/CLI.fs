@@ -42,12 +42,29 @@ with
 
 let run (args: ParseResults<Arguments>) =
     let results = args.GetAllResults()
-    if List.isEmpty results then
-        printfn "%s" (args.Parser.PrintUsage ())
-        255
-    else if args.Contains(Version) then
-        printfn "asra %O" Info.compilerVersion
-        0
-    else
-        printfn "Different arg"
-        0
+    match List.tryExactlyOne results with
+        | None ->
+            args.Raise("Wrong number of arguments supplied", errorCode = ErrorCode.CommandLine, showUsage=true)
+            255
+        | Some Version ->
+            printfn "asra %O" Info.compilerVersion
+            0
+        | Some (Repl replArgs) ->
+            let args: Repl.Arguments = {
+                printAst = replArgs.Contains(PrintAst)
+                printIR = replArgs.Contains(PrintIR)
+                printTIR = replArgs.Contains(PrintTypedIR)
+            }
+            Repl.runRepl args
+            0
+        | Some (CompileFile compileArgs) ->
+            let args: Compiler.Arguments = {
+                file = compileArgs.GetResult(File)
+            }
+            match Compiler.runCompiler args with
+                | Ok res -> 
+                    printfn "%A" res
+                    0
+                | Error e -> 
+                    printfn "%s" e
+                    255

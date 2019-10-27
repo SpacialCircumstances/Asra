@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Compiler.fs" />
+    <Compile Include="Repl.fs" />
     <Compile Include="CLI.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
