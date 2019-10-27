@@ -24,14 +24,14 @@ with
     interface IArgParserTemplate with
         member self.Usage =
             match self with
-                | PrintAst -> "Prins the AST after parsing"
+                | PrintAst -> "Print the AST after parsing"
                 | PrintIR -> "Print the untyped IR"
                 | PrintTypedIR -> "Print the typed IR"
 
 type Arguments =
-    | [<Unique>] Version
+    | [<Unique; AltCommandLine("-v")>] Version
     | [<CliPrefix(CliPrefix.None)>] Repl of ParseResults<ReplArgs>
-    | [<CliPrefix(CliPrefix.None)>] CompileFile of ParseResults<CompileArgs>
+    | [<CliPrefix(CliPrefix.None); AltCommandLine("c")>] CompileFile of ParseResults<CompileArgs>
 with
     interface IArgParserTemplate with
         member self.Usage =
