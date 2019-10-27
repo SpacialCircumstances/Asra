@@ -1,6 +1,8 @@
 ﻿module CLI
 
 open Argu
+open System
+open System.IO
 
 type CompileArgs =
     | [<MainCommand; ExactlyOnce; Last>] File of file:string
@@ -51,19 +53,30 @@ let run (args: ParseResults<Arguments>) =
             0
         | Some (Repl replArgs) ->
             let args: Repl.Arguments = {
-                printAst = replArgs.Contains(PrintAst)
-                printIR = replArgs.Contains(PrintIR)
-                printTIR = replArgs.Contains(PrintTypedIR)
+                printAst = replArgs.Contains(ReplArgs.PrintAst)
+                printIR = replArgs.Contains(ReplArgs.PrintIR)
+                printTIR = replArgs.Contains(ReplArgs.PrintTypedIR)
             }
             Repl.runRepl args
             0
         | Some (CompileFile compileArgs) ->
+            let createWriter path = 
+                match path with
+                    | Some None -> System.Console.Out
+                    | Some (Some path) ->
+                        File.CreateText(path) :> TextWriter
+                    | None -> TextWriter.Null
+
             let args: Compiler.Arguments = {
                 file = compileArgs.GetResult(File)
+                astPrint = createWriter (compileArgs.TryGetResult(CompileArgs.PrintAst))
+                irPrint = createWriter (compileArgs.TryGetResult(CompileArgs.PrintIR))
+                log = System.Console.Out
+                tirPrint = createWriter (compileArgs.TryGetResult(CompileArgs.PrintTypedIR))
             }
             match Compiler.runCompiler args with
                 | Ok res -> 
-                    printfn "%A" res
+                    printfn "%s" res
                     0
                 | Error e -> 
                     printfn "%s" e
