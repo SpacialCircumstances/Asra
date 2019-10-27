@@ -45,6 +45,9 @@ let run (args: ParseResults<Arguments>) =
     if List.isEmpty results then
         printfn "%s" (args.Parser.PrintUsage ())
         255
+    else if args.Contains(Version) then
+        printfn "asra %O" Info.compilerVersion
+        0
     else
         printfn "Different arg"
         0
