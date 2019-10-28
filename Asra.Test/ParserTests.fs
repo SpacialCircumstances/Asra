@@ -231,6 +231,26 @@ let testCases () =
                 Variable ("a", ())
                 Variable ("b", ())], ()), ())
         ], BinaryOperatorCall (Literal (Int 2L, ()), "+", Literal (Int -12L, ()), ()), ())
+        "[ 1; 2; 3; 4]", Literal (List [
+            Literal (Int 1L, ())
+            Literal (Int 2L, ())
+            Literal (Int 3L, ())
+            Literal (Int 4L, ())
+        ], ())
+        "[]", Literal (List [], ())
+        """
+        [
+            "Test"
+            value
+            (f x)
+            []
+        ]
+        """, Literal (List [
+            Literal (String "Test", ())
+            Variable ("value", ())
+            Group (FunctionCall (Variable ("f", ()), [ Variable("x", ()) ], ()), ())
+            Literal (List [], ())
+        ], ())
     ] |> Seq.map (fun (code, ast) -> [| box code; box ast|])
 
 [<Theory>]
