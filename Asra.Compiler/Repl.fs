@@ -27,7 +27,13 @@ let readCode () =
     String.Join("\n", lines)
 
 let runCode (args: Arguments) (code: string) =
-    ()
+    match Parser.compilerParser "REPL" code with
+        | Ok ast ->
+            if args.printAst then
+                printfn "%A" ast
+            
+        | Error pe ->
+            printfn "Parser Error: %s" pe
 
 let runRepl (args: Arguments) =
     let run = runCode args
