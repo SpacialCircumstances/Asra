@@ -43,6 +43,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let spaces1 = skipMany1 (whitespaceCharParser <|> commentParser) <?> "Whitespace"
 
+    let onlySpaces = skipMany (skipChar ' ' <|> skipChar '\t' <|> commentParser) <?> "Whitespace"
+
     let (expressionParser: Parser<Expression<'data>, unit>, expressionParserRef) = createParserForwardedToRef ()
 
     let (functionExpressionParser: Parser<Expression<'data>, unit>, functionExpressionParserRef) = createParserForwardedToRef ()
@@ -70,7 +72,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
     
     let unitLiteralParser: Parser<Literal<Expression<'data>>, unit> = mapString "()" Unit <?> "Unit literal"
     
-    let listLiteralParser: Parser<Literal<Expression<'data>>, unit> = between leftSquareParensParser rightSquareParensParser (sepBy functionExpressionParser (spaces .>> separatorParser .>> spaces)) |>> List
+    let listLiteralParser: Parser<Literal<Expression<'data>>, unit> = between leftSquareParensParser rightSquareParensParser (sepEndBy functionExpressionParser (onlySpaces .>> separatorParser .>> spaces)) |>> List
 
     let unescapedCharParser: Parser<char, unit> = satisfy (fun ch -> ch <> '\\' && ch <> '\"')
     
