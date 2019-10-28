@@ -212,7 +212,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
         unaryOperatorParser
         groupExpressionParser ] "Expression" <!> "Function expression parser"
 
-    let programParser = spaces >>. expressionParser .>> spaces
+    let programParser = spaces >>. expressionParser .>> spaces .>> eof
 
     let parse (name: string) (code: string) = match CharParsers.runParserOnString programParser () name code with
                                                 | Success (res, _, _) -> Result.Ok res
