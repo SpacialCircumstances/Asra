@@ -1,5 +1,6 @@
 ﻿module Parser
 
+open AstCommon
 open FrontendAst
 open FParsec
 

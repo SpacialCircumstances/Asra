@@ -1,26 +1,11 @@
 ﻿module FrontendAst
 
-type TypeDeclaration =
-    | Name of string
-    | Generic of string
-    | Parameterized of string * TypeDeclaration list
-    | Function of TypeDeclaration * TypeDeclaration
-
-type Declaration =
-    | Named of string
-    | TypeAnnotated of string * TypeDeclaration
+open AstCommon
 
 type BindingModifier = 
     | Recursive
 
 type LetBinding<'data> = (BindingModifier option) * Declaration * Expression<'data>
-
-and Literal =
-    | Int of int64
-    | String of string
-    | Float of float
-    | Bool of bool
-    | Unit
 
 and Expression<'data> =
     | Literal of Literal * 'data
