@@ -35,6 +35,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let commentParser = skipChar '#' .>> skipManyTill anyChar newline
 
+    let separatorParser = skipNewline <|> skipChar ';'
+
     let whitespaceCharParser = skipSatisfy System.Char.IsWhiteSpace
 
     let spaces = skipMany (whitespaceCharParser <|> commentParser) <?> "Whitespace"
@@ -51,6 +53,10 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let rightParensParser = spaces .>> skipChar ')'
 
+    let leftSquareParensParser = skipChar '[' .>> spaces
+
+    let rightSquareParensParser = spaces .>> skipChar ']'
+
     let floatLiteralParser: Parser<Literal<Expression<'data>>, unit> = numberLiteral (NumberLiteralOptions.DefaultFloat) "Float literal" |>> (fun f -> 
         match f.IsInteger with
             | true -> int64 f.String |> Int
@@ -64,6 +70,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
     
     let unitLiteralParser: Parser<Literal<Expression<'data>>, unit> = mapString "()" Unit <?> "Unit literal"
     
+    let listLiteralParser: Parser<Literal<Expression<'data>>, unit> = between leftSquareParensParser rightSquareParensParser (sepBy functionExpressionParser (spaces .>> separatorParser .>> spaces)) |>> List
+
     let unescapedCharParser: Parser<char, unit> = satisfy (fun ch -> ch <> '\\' && ch <> '\"')
     
     let escapedCharParser: Parser<char, unit> = 
@@ -91,7 +99,8 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
             intLiteralParser
             stringLiteralParser
             boolLiteralParser
-            unitLiteralParser ] "Literal" |>> (fun (data, lit) -> Literal (lit, data)) <?> "Literal expression" <!> "Literal expression parser"
+            unitLiteralParser
+            listLiteralParser ] "Literal" |>> (fun (data, lit) -> Literal (lit, data)) <?> "Literal expression" <!> "Literal expression parser"
 
     let groupExpressionParser: Parser<Expression<'data>, unit> = dataParser .>>. (between leftParensParser rightParensParser expressionParser) |>> (fun (data, expr) -> Group (expr, data)) <?> "Group expression" <!> "Group expression parser"
 
