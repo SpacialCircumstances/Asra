@@ -1,5 +1,6 @@
 ﻿module ParserTests
 
+open AstCommon
 open FrontendAst
 open Parser
 open Xunit
