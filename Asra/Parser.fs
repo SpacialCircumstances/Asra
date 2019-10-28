@@ -223,3 +223,5 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 let testLogger (s: string) = System.Diagnostics.Debug.WriteLine s
 
 let testParser = createParser (preturn ()) (Some testLogger) "Test"
+
+let compilerParser (filename: string) = createParser getPosition (None) filename
