@@ -51,18 +51,18 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
 
     let rightParensParser = spaces .>> skipChar ')'
 
-    let floatLiteralParser: Parser<Literal, unit> = numberLiteral (NumberLiteralOptions.DefaultFloat) "Float literal" |>> (fun f -> 
+    let floatLiteralParser: Parser<Literal<Expression<'data>>, unit> = numberLiteral (NumberLiteralOptions.DefaultFloat) "Float literal" |>> (fun f -> 
         match f.IsInteger with
             | true -> int64 f.String |> Int
             | false -> float f.String |> Float)
     
-    let intLiteralParser: Parser<Literal, unit> = pint64 |>> Int
+    let intLiteralParser: Parser<Literal<Expression<'data>>, unit> = pint64 |>> Int
 
     let mapString (str: string) (res: 'a): Parser<'a, unit> = (skipString str >>% res) <?> str
     
-    let boolLiteralParser: Parser<Literal, unit> = ((mapString "false" false <|> mapString "true" true) |>> Bool) <?> "Bool literal"
+    let boolLiteralParser: Parser<Literal<Expression<'data>>, unit> = ((mapString "false" false <|> mapString "true" true) |>> Bool) <?> "Bool literal"
     
-    let unitLiteralParser: Parser<Literal, unit> = mapString "()" Unit <?> "Unit literal"
+    let unitLiteralParser: Parser<Literal<Expression<'data>>, unit> = mapString "()" Unit <?> "Unit literal"
     
     let unescapedCharParser: Parser<char, unit> = satisfy (fun ch -> ch <> '\\' && ch <> '\"')
     
@@ -82,7 +82,7 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
     
     let stringCharParser: Parser<char, unit> = unescapedCharParser <|> escapedCharParser
     
-    let stringLiteralParser: Parser<Literal, unit> = (skipChar '"' >>. (manyChars stringCharParser) .>> skipChar '"' |>> String) <?> "String literal"
+    let stringLiteralParser: Parser<Literal<Expression<'data>>, unit> = (skipChar '"' >>. (manyChars stringCharParser) .>> skipChar '"' |>> String) <?> "String literal"
     
     let literalExpressionParser: Parser<Expression<'data>, unit> = 
         dataParser .>>.

@@ -10,7 +10,7 @@ type LetExpression<'data> = {
 }
 
 and Expression<'data> =
-    | Literal of Literal * 'data
+    | Literal of Literal<Expression<'data>> * 'data
     | Variable of string * 'data
     | Application of Expression<'data> * Expression<'data> * 'data
     | Lambda of Declaration * Expression<'data> * 'data

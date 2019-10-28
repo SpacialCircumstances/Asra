@@ -8,7 +8,7 @@ type BindingModifier =
 type LetBinding<'data> = (BindingModifier option) * Declaration * Expression<'data>
 
 and Expression<'data> =
-    | Literal of Literal * 'data
+    | Literal of Literal<Expression<'data>> * 'data
     | Group of Expression<'data> * 'data
     | Let of LetBinding<'data> list * Expression<'data> * 'data
     | Variable of string * 'data
