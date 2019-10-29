@@ -21,4 +21,6 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
             map (FrontendAst.FunctionCall (FrontendAst.Variable (op, data), [ expr ], data))
         | FrontendAst.BinaryOperatorCall (e1, op, e2, data) ->
             map (FrontendAst.FunctionCall (FrontendAst.Variable (op, data), [ e1; e2 ], data))
+        | FrontendAst.If (condExpr, ifExpr, elseExpr, data) ->
+            IR.If (map condExpr, map ifExpr, map elseExpr, data)
         | _ -> invalidOp "Not implemented"
