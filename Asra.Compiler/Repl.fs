@@ -31,6 +31,9 @@ let runCode (args: Arguments) (code: string) =
         | Ok ast ->
             if args.printAst then
                 printfn "%A" ast
+            let ir = IRGenerator.map ast
+            if args.printIR then
+                printfn "%A" ir
             
         | Error pe ->
             printfn "Parser Error: %s" pe

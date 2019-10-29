@@ -16,6 +16,8 @@ let runCompiler (args: Arguments) =
         match Parser.compilerParser args.file code with
             | Ok ast ->
                 args.astPrint.WriteLine (sprintf "%A" ast)
+                let ir = IRGenerator.map ast
+                args.irPrint.WriteLine (sprintf "%A" ir)
                 Ok "Compilation finished"
             | Error parserError ->
                 Error (sprintf "Error: %s" parserError)
