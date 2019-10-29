@@ -17,4 +17,8 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
         | FrontendAst.Literal (lit, data) -> IR.Literal (mapLit lit, data)
         | FrontendAst.Group (expr, _) -> map expr
         | FrontendAst.Variable (name, data) -> IR.Variable (name, data)
+        | FrontendAst.UnaryOperatorCall (op, expr, data) -> 
+            map (FrontendAst.FunctionCall (FrontendAst.Variable (op, data), [ expr ], data))
+        | FrontendAst.BinaryOperatorCall (e1, op, e2, data) ->
+            map (FrontendAst.FunctionCall (FrontendAst.Variable (op, data), [ e1; e2 ], data))
         | _ -> invalidOp "Not implemented"
