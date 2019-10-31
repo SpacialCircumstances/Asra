@@ -19,6 +19,29 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
             | Float f -> Float f
             | Bool b -> Bool b
 
+    let rec expandLet (binds: FrontendAst.LetBinding<'data> list) (irExpr: IR.Expression<'data>) (data: 'data) = 
+        let (modifier, decl, valueExpr) = List.head binds
+        let next = match List.tail binds with
+                    | [] -> irExpr
+                    | tail -> expandLet tail irExpr data
+        let irValueExpr = map valueExpr
+        match modifier with
+            | None -> 
+                IR.Let {
+                    data = data
+                    binding = decl
+                    value = irValueExpr
+                    body = next
+                }
+            | Some FrontendAst.Recursive ->
+                IR.LetRec {
+                    data = data
+                    binding = decl
+                    value = irValueExpr
+                    body = next
+                }
+
+
     match expr with
         | FrontendAst.Literal (lit, data) -> IR.Literal (mapLit lit, data)
         | FrontendAst.Group (expr, _) -> map expr
@@ -32,4 +55,7 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
         | FrontendAst.Lambda (decls, expr, data) ->
             let irExpr = map expr
             lambdaCurry decls irExpr data
+        | FrontendAst.Import (import, data) -> invalidOp "Imports are not supported at the moment"
+        | FrontendAst.Let (bindings, expr, data) ->
+            expandLet bindings (map expr) data
         | _ -> invalidOp "Not implemented"
