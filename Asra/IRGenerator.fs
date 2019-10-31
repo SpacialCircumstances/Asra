@@ -2,6 +2,12 @@
 
 open AstCommon
 
+let rec lambdaCurry (decls: Declaration list) (expr: IR.Expression<'data>) (data: 'data) =
+    match decls with
+        | [lastDecl] -> IR.Lambda(lastDecl, expr, data)
+        | d :: tail -> IR.Lambda(d, lambdaCurry tail expr data, data)
+        | _ -> invalidOp "Lambda cannot have empty parameter list"
+
 let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
     let mapLit (lit: Literal<FrontendAst.Expression<'data>>) =
         match lit with
@@ -23,4 +29,7 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
             map (FrontendAst.FunctionCall (FrontendAst.Variable (op, data), [ e1; e2 ], data))
         | FrontendAst.If (condExpr, ifExpr, elseExpr, data) ->
             IR.If (map condExpr, map ifExpr, map elseExpr, data)
+        | FrontendAst.Lambda (decls, expr, data) ->
+            let irExpr = map expr
+            lambdaCurry decls irExpr data
         | _ -> invalidOp "Not implemented"
