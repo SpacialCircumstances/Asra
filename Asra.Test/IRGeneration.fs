@@ -38,3 +38,20 @@ let ``Let`` () =
         })
     })
     assertEq ir (IRGenerator.map ast)
+
+[<Fact>]
+let ``Function application`` () =
+    let ast = FrontendAst.FunctionCall (
+                FrontendAst.Variable ("f", ()),
+                    [
+                        FrontendAst.Variable ("x", ())
+                        FrontendAst.Group (FrontendAst.FunctionCall (FrontendAst.Variable ("g", ()), [
+                                                FrontendAst.Variable ("y", ())
+                                            ], ()), ())
+                        FrontendAst.Literal (Int 2L, ())
+                    ], ())
+    let call = IR.Application (IR.Variable ("g", ()), IR.Variable ("y", ()), ())
+    let ir = IR.Application (
+                IR.Application (
+                    IR.Application (IR.Variable ("f", ()), IR.Variable("x", ()), ()), call, ()), IR.Literal (Int 2L, ()), ())
+    assertEq ir (IRGenerator.map ast)
