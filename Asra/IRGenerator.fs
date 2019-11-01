@@ -19,6 +19,14 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
             | Float f -> Float f
             | Bool b -> Bool b
 
+    let rec expandFunctionCalls (funExpr: IR.Expression<'data>) (args: FrontendAst.Expression<'data> list) (data: 'data) =
+        match args with
+            | [lastArg] -> IR.Application (funExpr, map lastArg, data)
+            | arg :: tail ->
+                let nextFun = IR.Application (funExpr, map arg, data)
+                expandFunctionCalls nextFun tail data
+            | _ -> invalidOp "Function calls must always have at least one argument"
+
     let rec expandLet (binds: FrontendAst.LetBinding<'data> list) (irExpr: IR.Expression<'data>) (data: 'data) = 
         let (modifier, decl, valueExpr) = List.head binds
         let next = match List.tail binds with
@@ -58,4 +66,6 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
         | FrontendAst.Import (import, data) -> invalidOp "Imports are not supported at the moment"
         | FrontendAst.Let (bindings, expr, data) ->
             expandLet bindings (map expr) data
-        | _ -> invalidOp "Not implemented"
+        | FrontendAst.FunctionCall (funExpr, args, data) ->
+            let irFunExpr = map funExpr
+            expandFunctionCalls irFunExpr args data
