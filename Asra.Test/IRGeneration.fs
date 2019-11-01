@@ -55,3 +55,17 @@ let ``Function application`` () =
                 IR.Application (
                     IR.Application (IR.Variable ("f", ()), IR.Variable("x", ()), ()), call, ()), IR.Literal (Int 2L, ()), ())
     assertEq ir (IRGenerator.map ast)
+
+[<Fact>]
+let ``Unary operators`` () =
+    let ast = FrontendAst.UnaryOperatorCall ("-", FrontendAst.Group (FrontendAst.Literal (Int 3L, ()), ()), ())
+    let ir = IR.Application (IR.Variable("-", ()), IR.Literal (Int 3L, ()), ())
+    assertEq ir (IRGenerator.map ast)
+
+[<Fact>]
+let ``Binary operators`` () =
+    let ast = FrontendAst.BinaryOperatorCall (FrontendAst.Literal (Int 4L, ()), "+", FrontendAst.Group (FrontendAst.Literal (Int 3L, ()), ()), ())
+    let ir = IR.Application (
+                IR.Application (IR.Variable("+", ()), IR.Literal (Int 4L, ()), ()),
+                IR.Literal (Int 3L, ()), ())
+    assertEq ir (IRGenerator.map ast)
