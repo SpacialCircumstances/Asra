@@ -202,6 +202,7 @@ let testCases () =
             Literal (Int 2L, ())
         ], ())
         "- 2", UnaryOperatorCall ("-", Literal (Int 2L, ()), ())
+        "-(2)", UnaryOperatorCall ("-", Group (Literal (Int 2L, ()), ()), ())
         "!false", UnaryOperatorCall ("!", Literal (Bool false, ()), ())
         "2 + 2", BinaryOperatorCall (Literal (Int 2L, ()), "+", Literal (Int 2L, ()), ())
         "1 + 2 + 3", BinaryOperatorCall (Literal (Int 1L, ()), "+", BinaryOperatorCall (Literal (Int 2L, ()), "+", Literal (Int 3L, ()), ()), ())
