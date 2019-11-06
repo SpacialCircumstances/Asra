@@ -64,6 +64,16 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                             nodeType = litType
                         }) |> Ok
                     | Error errors -> Error (System.String.Join (", ", errors))
-             | _ -> Error ""
+            | If (condExpr, ifExpr, elseExpr, data) ->
+                Errors.result {
+                    let! cond = assignTypename context condExpr
+                    let! ifE = assignTypename context ifExpr
+                    let! elseE = assignTypename context elseExpr 
+                    return If (cond, ifE, elseE, {
+                        nodeInformation = data
+                        nodeType = Var (next ())
+                    })
+                }
+            | _ -> Error ""
 
     assignTypename Map.empty ir
