@@ -13,6 +13,7 @@ type AType =
     | Primitive of Primitive
     | Func of AType * AType
     | Var of string
+    | Parameterized of string * AType list
 
 type TypeData<'oldData> = {
     nodeInformation: 'oldData
