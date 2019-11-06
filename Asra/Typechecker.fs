@@ -29,13 +29,41 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
         incr counter
         tn
 
-    let rec assignTypename (expr: Expression<'oldData>) (context: SymbolTable): Result<Expression<TypeData<'oldData>>, string> =
+    let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData>): Result<Expression<TypeData<'oldData>>, string> =
         match expr with
             | Variable (name, data) when Map.containsKey name context ->
                 Variable (name, {
                     nodeInformation = data
                     nodeType = Map.find name context
                     }) |> Ok
-            | _ -> Error ""
+            | Literal (lit, data) ->
+                let newLit = 
+                    match lit with
+                        | AstCommon.Bool b -> 
+                            Ok (AstCommon.Bool b, Primitive Bool)
+                        | AstCommon.Int i -> 
+                            Ok (AstCommon.Int i, Primitive Int)
+                        | AstCommon.String s -> 
+                            Ok (AstCommon.String s, Primitive String)
+                        | AstCommon.Unit -> 
+                            Ok (AstCommon.Unit, Primitive Unit)
+                        | AstCommon.Float f -> 
+                            Ok (AstCommon.Float f, Primitive Float)
+                        | AstCommon.List exprs -> 
+                            match exprs 
+                                |> List.map (assignTypename context)
+                                |> Errors.collectErrors with
+                                    | exprs, [] ->
+                                        let lit = AstCommon.List exprs
+                                        Ok (lit, Parameterized ("List", [ Var (next ()) ]))
+                                    | _, errs -> Error errs
+                match newLit with
+                    | Ok (literal, litType) ->
+                        Literal (literal, {
+                            nodeInformation = data
+                            nodeType = litType
+                        }) |> Ok
+                    | Error errors -> Error (System.String.Join (", ", errors))
+             | _ -> Error ""
 
-    assignTypename ir Map.empty
+    assignTypename Map.empty ir
