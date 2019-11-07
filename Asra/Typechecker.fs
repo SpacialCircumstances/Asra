@@ -138,6 +138,14 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                     }
                 }
             | Application (funcExpr, argExpr, data) ->
-                Error ""
+                Errors.result {
+                    let! newFuncExpr = assignTypename context funcExpr
+                    let! newArgExpr = assignTypename context argExpr
+                    let newData = {
+                        nodeInformation = data
+                        nodeType = Var (next ())
+                    }
+                    return Application(newFuncExpr, newArgExpr, newData)
+                }
 
     assignTypename Map.empty ir
