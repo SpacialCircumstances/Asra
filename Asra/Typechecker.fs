@@ -49,6 +49,8 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                     nodeInformation = data
                     nodeType = Map.find name context
                     }) |> Ok
+            | Variable (name, data) ->
+                Error (sprintf "Error in %O: Variable %s not defined" data name)
             | Literal (lit, data) ->
                 let newLit = 
                     match lit with
