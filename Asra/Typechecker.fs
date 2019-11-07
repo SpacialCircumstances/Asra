@@ -101,5 +101,43 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                             nodeType = typ
                         }) |> Ok
                     | Error e -> Error e
+            | Let l ->
+                let (name, typ) = match l.binding with
+                                    | AstCommon.Named n -> n, Var (next ())
+                                    | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let innerContext = Map.add name typ context
+                Errors.result {
+                    let! newValueExpr = assignTypename context l.value
+                    let! newBodyExpr = assignTypename innerContext l.body
+                    return Let {
+                        binding = l.binding
+                        value = newValueExpr
+                        body = newBodyExpr
+                        data = {
+                            nodeInformation = l.data
+                            nodeType = Var (next ())
+                        }
+                    }
+                }
+            | LetRec l ->
+                let (name, typ) = match l.binding with
+                                    | AstCommon.Named n -> n, Var (next ())
+                                    | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let innerContext = Map.add name typ context
+                Errors.result {
+                    let! newValueExpr = assignTypename context l.value
+                    let! newBodyExpr = assignTypename innerContext l.body
+                    return LetRec {
+                        binding = l.binding
+                        value = newValueExpr
+                        body = newBodyExpr
+                        data = {
+                            nodeInformation = l.data
+                            nodeType = Var (next ())
+                        }
+                    }
+                }
+            | Application (funcExpr, argExpr, data) ->
+                Error ""
 
     assignTypename Map.empty ir
