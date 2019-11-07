@@ -29,6 +29,19 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
         incr counter
         tn
 
+    let rec toType (td: AstCommon.TypeDeclaration) =
+        match td with
+            | AstCommon.Name "Int" -> Primitive Int
+            | AstCommon.Name "String" -> Primitive String
+            | AstCommon.Name "Float" -> Primitive Float
+            | AstCommon.Name "Bool" -> Primitive Bool
+            | AstCommon.Name "Unit" -> Primitive Unit
+            | AstCommon.Name _ -> Var (next ()) //TODO
+            | AstCommon.Generic _ -> Var (next ()) //TODO
+            | AstCommon.Function (itd, otd) -> Func (toType itd, toType otd)
+            | AstCommon.Parameterized (name, parameters) ->
+                Parameterized (name, List.map toType parameters)
+
     let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData>): Result<Expression<TypeData<'oldData>>, string> =
         match expr with
             | Variable (name, data) when Map.containsKey name context ->
@@ -74,6 +87,17 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                         nodeType = Var (next ())
                     })
                 }
-            | _ -> Error ""
+            | Lambda (decl, expr, data) ->
+                let (name, typ) = match decl with
+                                    | AstCommon.Named n -> n, Var (next ())
+                                    | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let innerContext = Map.add name typ context
+                match assignTypename innerContext expr with
+                    | Ok newExpr ->
+                        Lambda (decl, newExpr, {
+                            nodeInformation = data
+                            nodeType = typ
+                        }) |> Ok
+                    | Error e -> Error e
 
     assignTypename Map.empty ir
