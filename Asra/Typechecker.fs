@@ -131,7 +131,7 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                                     | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
                 let innerContext = Map.add name typ context
                 Errors.result {
-                    let! newValueExpr = assignTypename context l.value
+                    let! newValueExpr = assignTypename innerContext l.value
                     let! newBodyExpr = assignTypename innerContext l.body
                     return LetRec {
                         binding = l.binding
