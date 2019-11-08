@@ -20,6 +20,12 @@ type TypeData<'oldData> = {
     nodeType: AType
 }
 
+type TypeEquation<'data> = {
+    origin: Expression<TypeData<'data>>
+    left: AType
+    right: AType
+}
+
 type SymbolTable = Map<string, AType>
 
 let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'oldData>>, string> =
@@ -149,3 +155,18 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                 }
 
     assignTypename Map.empty ir
+
+let getType (expr: Expression<TypeData<'data>>) = (getData expr).nodeType
+
+let rec generateEquations (expr: Expression<TypeData<'data>>) =
+    seq {
+        match expr with
+            | Application (funcExpr, argExpr, data) ->
+                yield! generateEquations funcExpr
+                yield! generateEquations argExpr
+                yield {
+                    left = getType funcExpr
+                    right = Func (getType argExpr, data.nodeType)
+                    origin = expr
+                }
+    }
