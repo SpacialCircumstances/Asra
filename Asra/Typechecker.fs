@@ -159,14 +159,26 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
 let getType (expr: Expression<TypeData<'data>>) = (getData expr).nodeType
 
 let rec generateEquations (expr: Expression<TypeData<'data>>) =
+    let eq l r = {
+        left = l
+        right = r
+        origin = expr
+    }
     seq {
         match expr with
             | Application (funcExpr, argExpr, data) ->
                 yield! generateEquations funcExpr
                 yield! generateEquations argExpr
-                yield {
-                    left = getType funcExpr
-                    right = Func (getType argExpr, data.nodeType)
-                    origin = expr
-                }
+                yield eq (getType funcExpr) (Func (getType argExpr, data.nodeType))
+            | If (condExpr, ifExpr, elseExpr, data) ->
+                yield! generateEquations condExpr
+                yield! generateEquations ifExpr
+                yield! generateEquations elseExpr
+                yield eq (getType ifExpr) (Primitive Bool)
+                yield eq data.nodeType (getType ifExpr)
+                yield eq data.nodeType (getType elseExpr)
+            | Variable _ -> ()
+            | Lambda (decl, expr, data) ->
+                yield! generateEquations expr
+                invalidOp "Not implemented"
     }
