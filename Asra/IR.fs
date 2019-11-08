@@ -2,23 +2,23 @@
 
 open AstCommon
 
-type LetExpression<'data> = {
-    binding: Declaration
-    value: Expression<'data>
-    body: Expression<'data>
+type LetExpression<'data, 'decl> = {
+    binding: 'decl
+    value: Expression<'data, 'decl>
+    body: Expression<'data, 'decl>
     data: 'data
 }
 
-and Expression<'data> =
-    | Literal of Literal<Expression<'data>> * 'data
+and Expression<'data, 'decl> =
+    | Literal of Literal<Expression<'data, 'decl>> * 'data
     | Variable of string * 'data
-    | Application of Expression<'data> * Expression<'data> * 'data
-    | Lambda of Declaration * Expression<'data> * 'data
-    | Let of LetExpression<'data>
-    | LetRec of LetExpression<'data>
-    | If of Expression<'data> * Expression<'data> * Expression<'data> * 'data
+    | Application of Expression<'data, 'decl> * Expression<'data, 'decl> * 'data
+    | Lambda of 'decl * Expression<'data, 'decl> * 'data
+    | Let of LetExpression<'data, 'decl>
+    | LetRec of LetExpression<'data, 'decl>
+    | If of Expression<'data, 'decl> * Expression<'data, 'decl> * Expression<'data, 'decl> * 'data
 
-let getData (expr: Expression<'data>) =
+let getData (expr: Expression<'data, 'decl>) =
     match expr with
         | Variable (_, data) -> data
         | Literal (_, data) -> data

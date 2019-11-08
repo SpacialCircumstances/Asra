@@ -20,15 +20,20 @@ type TypeData<'oldData> = {
     nodeType: AType
 }
 
+type Declaration = {
+    name: string
+    declType: AType
+}
+
 type TypeEquation<'data> = {
-    origin: Expression<TypeData<'data>>
+    origin: Expression<TypeData<'data>, Declaration>
     left: AType
     right: AType
 }
 
 type SymbolTable = Map<string, AType>
 
-let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'oldData>>, string> =
+let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
     let counter = ref 0
     let next () = 
         let tn = sprintf "t%i" !counter
@@ -48,7 +53,7 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
             | AstCommon.Parameterized (name, parameters) ->
                 Parameterized (name, List.map toType parameters)
 
-    let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData>): Result<Expression<TypeData<'oldData>>, string> =
+    let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
         match expr with
             | Variable (name, data) when Map.containsKey name context ->
                 Variable (name, {
@@ -99,10 +104,14 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                 let (name, typ) = match decl with
                                     | AstCommon.Named n -> n, Var (next ())
                                     | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let newDecl = {
+                    name = name
+                    declType = typ
+                }
                 let innerContext = Map.add name typ context
                 match assignTypename innerContext expr with
                     | Ok newExpr ->
-                        Lambda (decl, newExpr, {
+                        Lambda (newDecl, newExpr, {
                             nodeInformation = data
                             nodeType = typ
                         }) |> Ok
@@ -111,12 +120,16 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                 let (name, typ) = match l.binding with
                                     | AstCommon.Named n -> n, Var (next ())
                                     | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let newBinding = {
+                    name = name
+                    declType = typ
+                }
                 let innerContext = Map.add name typ context
                 Errors.result {
                     let! newValueExpr = assignTypename context l.value
                     let! newBodyExpr = assignTypename innerContext l.body
                     return Let {
-                        binding = l.binding
+                        binding = newBinding
                         value = newValueExpr
                         body = newBodyExpr
                         data = {
@@ -129,12 +142,16 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
                 let (name, typ) = match l.binding with
                                     | AstCommon.Named n -> n, Var (next ())
                                     | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let newBinding = {
+                    name = name
+                    declType = typ
+                }
                 let innerContext = Map.add name typ context
                 Errors.result {
                     let! newValueExpr = assignTypename innerContext l.value
                     let! newBodyExpr = assignTypename innerContext l.body
                     return LetRec {
-                        binding = l.binding
+                        binding = newBinding
                         value = newValueExpr
                         body = newBodyExpr
                         data = {
@@ -156,9 +173,9 @@ let generateTypenames (ir: Expression<'oldData>): Result<Expression<TypeData<'ol
 
     assignTypename Map.empty ir
 
-let getType (expr: Expression<TypeData<'data>>) = (getData expr).nodeType
+let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
 
-let rec generateEquations (expr: Expression<TypeData<'data>>) =
+let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
     let eq l r = {
         left = l
         right = r
@@ -180,5 +197,5 @@ let rec generateEquations (expr: Expression<TypeData<'data>>) =
             | Variable _ -> ()
             | Lambda (decl, expr, data) ->
                 yield! generateEquations expr
-                invalidOp "Not implemented"
+                yield eq data.nodeType (Func (decl.declType, getType expr))
     }
