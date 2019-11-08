@@ -198,4 +198,17 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
             | Lambda (decl, expr, data) ->
                 yield! generateEquations expr
                 yield eq data.nodeType (Func (decl.declType, getType expr))
+            | Let l ->
+                yield! generateEquations l.value
+                yield eq l.binding.declType (getType l.value)
+                yield! generateEquations l.body
+                yield eq l.data.nodeType (getType l.body)
+            | LetRec l ->
+                yield! generateEquations l.value
+                yield eq l.binding.declType (getType l.value)
+                yield! generateEquations l.body
+                yield eq l.data.nodeType (getType l.body)
+            | Literal (lit, data) ->
+                //In theory, we only need to infer list literals here, and we will do this later
+                ()
     }
