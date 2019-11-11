@@ -34,7 +34,15 @@ let runCode (args: Arguments) (code: string) =
             let ir = IRGenerator.map ast
             if args.printIR then
                 printfn "%A" ir
-            
+            match Typechecker.generateTypenames ir with
+                | Ok typedIR -> 
+                    let eqs = Typechecker.generateEquations typedIR
+                    let subst = Typechecker.unifyAll eqs
+                    if args.printTIR then
+                        printfn "%A" typedIR
+                        printfn "%A" eqs
+                        printfn "%A" subst
+                | Error te -> printfn "Type Error: %s" te
         | Error pe ->
             printfn "Parser Error: %s" pe
 
