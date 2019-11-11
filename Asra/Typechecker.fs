@@ -44,6 +44,7 @@ type Declaration = {
     declType: AType
 }
 
+[<StructuredFormatDisplay("{left} = {right}")>]
 type TypeEquation<'data> = {
     origin: Expression<TypeData<'data>, Declaration>
     left: AType
