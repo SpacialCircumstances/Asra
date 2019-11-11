@@ -33,6 +33,8 @@ type TypeEquation<'data> = {
 
 type SymbolTable = Map<string, AType>
 
+type Substitutions = Map<string, AType>
+
 let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
     let counter = ref 0
     let next () = 
@@ -212,3 +214,22 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                 //In theory, we only need to infer list literals here, and we will do this later
                 ()
     }
+
+let unifyVariable a b subst =
+    Ok subst
+
+let rec unify (subst: Substitutions) (left: AType) (right: AType) =
+    if left = right then
+        Ok subst
+    else
+        match left, right with
+            | Var _, _ -> unifyVariable left right subst
+            | _, Var _ -> unifyVariable right left subst
+            | Func (li, lo), Func (ri, ro) ->
+                Result.bind (fun subst -> unify subst lo ro) (unify subst li ri)
+            | Parameterized (ln, lps), Parameterized (rn, rps) ->
+                Ok subst //TODO
+            | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
+
+let unifyAll (eqs: TypeEquation<'data> seq) =
+    Seq.fold (fun st eq -> Result.bind (fun subst -> unify subst eq.left eq.right) st) (Ok Map.empty)
