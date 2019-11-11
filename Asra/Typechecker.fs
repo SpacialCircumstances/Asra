@@ -175,7 +175,7 @@ let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<
 
     assignTypename Map.empty ir
 
-let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
+let private getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
 
 let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
     let eq l r = {
@@ -215,7 +215,7 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                 ()
     }
 
-let rec occursCheck (subst: Substitutions) (a: AType) (b: AType) =
+let rec private occursCheck (subst: Substitutions) (a: AType) (b: AType) =
     if a = b then
         true
     else
@@ -228,7 +228,7 @@ let rec occursCheck (subst: Substitutions) (a: AType) (b: AType) =
                 List.exists (fun tp -> occursCheck subst a tp) tps
             | _ -> false
 
-let rec unifyVariable (subst: Substitutions) (a: AType) (b: AType) unify =
+let rec private unifyVariable (subst: Substitutions) (a: AType) (b: AType) unify =
     match a with
         | Var aVar ->
             match Map.tryFind aVar subst with
@@ -243,7 +243,7 @@ let rec unifyVariable (subst: Substitutions) (a: AType) (b: AType) unify =
                             Map.add aVar b subst |> Ok
         | _ -> invalidOp "Expected Var type"
 
-let rec unify (subst: Substitutions) (left: AType) (right: AType) =
+let rec private unify (subst: Substitutions) (left: AType) (right: AType) =
     if left = right then
         Ok subst
     else
