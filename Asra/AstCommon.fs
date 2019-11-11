@@ -19,6 +19,15 @@ with
             | List exprs -> sprintf "[%s]" (System.String.Join("; ", exprs))
     member self.AsString = self.ToString ()
 
+[<StructuredFormatDisplay("{filename}:{line}:{col}")>]
+type SourcePosition = {
+    line: int
+    col: int
+    filename: string
+}
+with
+    override self.ToString () = sprintf "%s:%i:%i" self.filename self.line self.col
+
 [<StructuredFormatDisplay("{AsString}")>]
 type TypeDeclaration =
     | Name of string

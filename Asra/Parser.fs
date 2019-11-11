@@ -236,4 +236,10 @@ let testLogger (s: string) = System.Diagnostics.Debug.WriteLine s
 
 let testParser = createParser (preturn ()) (Some testLogger) "Test"
 
-let compilerParser (filename: string) = createParser getPosition (None) filename
+let sourcePositionParser: Parser<SourcePosition, unit> = getPosition |>> (fun pos -> {
+    filename = pos.StreamName
+    line = int pos.Line
+    col = int pos.Column
+})
+
+let compilerParser (filename: string) = createParser sourcePositionParser (None) filename
