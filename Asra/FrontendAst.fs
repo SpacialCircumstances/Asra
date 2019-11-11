@@ -2,8 +2,14 @@
 
 open AstCommon
 
+[<StructuredFormatDisplay("{AsString}")>]
 type BindingModifier = 
     | Recursive
+with 
+    override self.ToString () =
+        match self with
+            | Recursive -> "rec"
+    member self.AsString = self.ToString ()
 
 type LetBinding<'data> = (BindingModifier option) * Declaration * Expression<'data>
 
