@@ -215,16 +215,31 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                 ()
     }
 
-let unifyVariable a b subst =
-    Ok subst
+let rec occursCheck (a: AType) (b: AType) =
+    false
+
+let rec unifyVariable (subst: Substitutions) (a: AType) (b: AType) unify =
+    match a with
+        | Var aVar ->
+            match Map.tryFind aVar subst with
+                | Some tp -> unify subst tp b
+                | None ->
+                    match b with
+                        | Var bvar when Map.containsKey bvar subst ->
+                            unifyVariable subst a (Map.find bvar subst) unify
+                        | _ when occursCheck a b ->
+                            Error (sprintf "Cannot unify type %A with %A" a b)
+                        | _ -> 
+                            Map.add aVar b subst |> Ok
+        | _ -> invalidOp "Expected Var type"
 
 let rec unify (subst: Substitutions) (left: AType) (right: AType) =
     if left = right then
         Ok subst
     else
         match left, right with
-            | Var _, _ -> unifyVariable left right subst
-            | _, Var _ -> unifyVariable right left subst
+            | Var l, _ -> unifyVariable subst left right unify
+            | _, Var r -> unifyVariable subst right left unify
             | Func (li, lo), Func (ri, ro) ->
                 Result.bind (fun subst -> unify subst lo ro) (unify subst li ri)
             | Parameterized (ln, lps), Parameterized (rn, rps) ->
