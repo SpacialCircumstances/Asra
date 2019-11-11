@@ -248,12 +248,15 @@ let rec unify (subst: Substitutions) (left: AType) (right: AType) =
         Ok subst
     else
         match left, right with
-            | Var l, _ -> unifyVariable subst left right unify
-            | _, Var r -> unifyVariable subst right left unify
+            | Var _, _ -> unifyVariable subst left right unify
+            | _, Var _ -> unifyVariable subst right left unify
             | Func (li, lo), Func (ri, ro) ->
                 Result.bind (fun subst -> unify subst lo ro) (unify subst li ri)
             | Parameterized (ln, lps), Parameterized (rn, rps) ->
-                Ok subst //TODO
+                if ln = rn && (List.length lps) = (List.length rps) then
+                    List.fold2 (fun s a b -> Result.bind (fun s -> unify s a b) s) (Ok subst) lps rps
+                else
+                     Error (sprintf "Cannot unify type %A with %A" left right)
             | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
 
 let unifyAll (eqs: TypeEquation<'data> seq) =
