@@ -260,4 +260,4 @@ let rec unify (subst: Substitutions) (left: AType) (right: AType) =
             | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
 
 let unifyAll (eqs: TypeEquation<'data> seq) =
-    Seq.fold (fun st eq -> Result.bind (fun subst -> unify subst eq.left eq.right) st) (Ok Map.empty)
+    Seq.fold (fun st eq -> Result.bind (fun subst -> unify subst eq.left eq.right) st) (Ok Map.empty) eqs
