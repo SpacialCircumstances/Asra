@@ -34,15 +34,23 @@ with
                         sprintf "(%O -> %O) -> %O" fti fto output
     member self.AsString = self.ToString()
 
+[<StructuredFormatDisplay("{AsString}")>]
 type TypeData<'oldData> = {
     nodeInformation: 'oldData
     nodeType: AType
 }
+with
+    override self.ToString () = sprintf "{ type = %A @%A }" self.nodeType self.nodeInformation
+    member self.AsString = self.ToString ()
 
+[<StructuredFormatDisplay("{AsString}")>]
 type Declaration = {
     name: string
     declType: AType
 }
+with
+    override self.ToString () = sprintf "(%s: %A)" self.name self.declType
+    member self.AsString = self.ToString ()
 
 [<StructuredFormatDisplay("{left} = {right}")>]
 type TypeEquation<'data> = {
