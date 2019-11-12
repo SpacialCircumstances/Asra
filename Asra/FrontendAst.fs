@@ -32,7 +32,7 @@ with
                 | None -> sprintf "%A = %A" decl expr
 
         match self with
-            | Literal (lit, data) -> sprintf "(Literal %A @%A)" lit data
+            | Literal (lit, data) -> sprintf "%A@%A" lit data
             | Group (expr, data) -> sprintf "(Group %A @%A)" expr data
             | BinaryOperatorCall (op1, operator, op2, data) -> sprintf "(BinOp %s %A %A @%A)" operator op1 op2 data
             | FunctionCall (funcExpr, argsExpr, data) -> sprintf "(Call %A [%s] @%A)" funcExpr (System.String.Join("; ", argsExpr)) data
