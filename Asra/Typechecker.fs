@@ -143,7 +143,7 @@ let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<
                     | Ok newExpr ->
                         Lambda (newDecl, newExpr, {
                             nodeInformation = data
-                            nodeType = typ
+                            nodeType = Var (next ())
                         }) |> Ok
                     | Error e -> Error e
             | Let l ->
@@ -203,7 +203,19 @@ let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<
 
     assignTypename Map.empty ir
 
-let private getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
+let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
+
+let rec resolveType (subst: Substitutions) (tp: AType) =
+    match tp with
+        | Primitive _ -> tp
+        | Var s ->
+            match Map.tryFind s subst with
+                | Some t -> t
+                | None -> tp
+        | Func (it, ot) ->
+            Func (resolveType subst it, resolveType subst ot)
+        | Parameterized (name, parameters) ->
+            Parameterized (name, List.map (resolveType subst) parameters)
 
 let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
     let eq l r = {
