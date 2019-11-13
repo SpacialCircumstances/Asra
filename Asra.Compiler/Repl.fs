@@ -41,7 +41,11 @@ let runCode (args: Arguments) (code: string) =
                     if args.printTIR then
                         printfn "%A" typedIR
                         printfn "%A" eqs
-                        printfn "%A" subst
+                        match subst with
+                            | Ok subst ->
+                                printfn "%A" subst
+                                printfn "Inferred type for program: %A" (Typechecker.getType typedIR |> Typechecker.resolveType subst)
+                            | Error se -> printfn "Type Error: %s" se
                 | Error te -> printfn "Type Error: %s" te
         | Error pe ->
             printfn "Parser Error: %s" pe
