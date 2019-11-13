@@ -47,6 +47,7 @@ with
 type Declaration = {
     name: string
     declType: AType
+    annotatedType: AType option
 }
 with
     override self.ToString () = sprintf "(%s: %A)" self.name self.declType
@@ -131,12 +132,13 @@ let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<
                     })
                 }
             | Lambda (decl, expr, data) ->
-                let (name, typ) = match decl with
-                                    | AstCommon.Named n -> n, Var (next ())
-                                    | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let (name, typ, annotated) = match decl with
+                                                | AstCommon.Named n -> n, Var (next ()), None
+                                                | AstCommon.TypeAnnotated (n, tp) -> n, Var (next ()), Some (toType tp)
                 let newDecl = {
                     name = name
                     declType = typ
+                    annotatedType = annotated
                 }
                 let innerContext = Map.add name typ context
                 match assignTypename innerContext expr with
@@ -147,12 +149,13 @@ let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<
                         }) |> Ok
                     | Error e -> Error e
             | Let l ->
-                let (name, typ) = match l.binding with
-                                    | AstCommon.Named n -> n, Var (next ())
-                                    | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let (name, typ, annotated) = match l.binding with
+                                                | AstCommon.Named n -> n, Var (next ()), None
+                                                | AstCommon.TypeAnnotated (n, tp) -> n, Var (next ()), Some (toType tp)
                 let newBinding = {
                     name = name
                     declType = typ
+                    annotatedType = annotated
                 }
                 let innerContext = Map.add name typ context
                 Errors.result {
@@ -169,12 +172,13 @@ let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<
                     }
                 }
             | LetRec l ->
-                let (name, typ) = match l.binding with
-                                    | AstCommon.Named n -> n, Var (next ())
-                                    | AstCommon.TypeAnnotated (n, tp) -> n, toType tp
+                let (name, typ, annotated) = match l.binding with
+                                                | AstCommon.Named n -> n, Var (next ()), None
+                                                | AstCommon.TypeAnnotated (n, tp) -> n, Var (next ()), Some (toType tp)
                 let newBinding = {
                     name = name
                     declType = typ
+                    annotatedType = annotated
                 }
                 let innerContext = Map.add name typ context
                 Errors.result {
@@ -239,14 +243,26 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
             | Variable _ -> ()
             | Lambda (decl, expr, data) ->
                 yield! generateEquations expr
+                match decl.annotatedType with
+                        | None -> ()
+                        | Some annotated ->
+                            yield eq decl.declType annotated
                 yield eq data.nodeType (Func (decl.declType, getType expr))
             | Let l ->
                 yield! generateEquations l.value
+                match l.binding.annotatedType with
+                        | None -> ()
+                        | Some annotated ->
+                            yield eq l.binding.declType annotated
                 yield eq l.binding.declType (getType l.value)
                 yield! generateEquations l.body
                 yield eq l.data.nodeType (getType l.body)
             | LetRec l ->
                 yield! generateEquations l.value
+                match l.binding.annotatedType with
+                        | None -> ()
+                        | Some annotated ->
+                            yield eq l.binding.declType annotated
                 yield eq l.binding.declType (getType l.value)
                 yield! generateEquations l.body
                 yield eq l.data.nodeType (getType l.body)
