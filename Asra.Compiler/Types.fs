@@ -1,7 +1,11 @@
 ﻿module Types
 
+type CompilerArguments = {
+    inFile: string
+    outFile: string
+}
+
 type Arguments = {
-    file: string
     formatAst: FrontendAst.Expression<AstCommon.SourcePosition> -> unit
     formatIR: IR.Expression<AstCommon.SourcePosition, AstCommon.Declaration> -> unit
     formatTypedIR: IR.Expression<Typechecker.TypeData<AstCommon.SourcePosition>, Typechecker.Declaration> -> unit

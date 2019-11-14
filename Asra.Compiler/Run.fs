@@ -15,7 +15,6 @@ let run (args: ParseResults<CLI.Arguments>) =
             0
         | Some (CLI.Repl replArgs) ->
             let args = {
-                file = "REPL"
                 log = printfn "%s"
                 formatAst = printfn "%A"
                 formatIR = printfn "%A"
@@ -33,8 +32,12 @@ let run (args: ParseResults<CLI.Arguments>) =
                         File.CreateText(path) :> TextWriter
                     | None -> TextWriter.Null
 
+            let compilerArgs = {
+                inFile = compileArgs.GetResult(CLI.File)
+                outFile = ""
+            }
+
             let args = {
-                file = compileArgs.GetResult(CLI.File)
                 log = printfn "%s"
                 formatAst = printfn "%A"
                 formatIR = printfn "%A"
@@ -42,7 +45,7 @@ let run (args: ParseResults<CLI.Arguments>) =
                 formatEquations = printfn "%A"
                 formatSubstitutions = printfn "%A"
             }
-            match Compiler.runCompiler args with
+            match Compiler.runCompiler args compilerArgs with
                 | Ok res -> 
                     printfn "%s" res
                     0

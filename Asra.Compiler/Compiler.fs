@@ -11,10 +11,11 @@ let fileRead (filename: string) =
 
 let print _ = ()
 
-let runCompiler (args: Arguments) =
+let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
+    let file = compilerArgs.inFile
     Errors.result {
-        let! code = fileRead args.file
-        let! ast = Parser.compilerParser args.file code
+        let! code = fileRead file
+        let! ast = Parser.compilerParser file code
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
