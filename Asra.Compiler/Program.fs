@@ -7,7 +7,7 @@ let main argv =
     let parser = ArgumentParser.Create<CLI.Arguments>(programName="asra", errorHandler = errorHandler)
     try 
         let results = parser.Parse(inputs=argv, raiseOnUsage=true)
-        CLI.run results
+        Run.run results
     with
         | e -> 
             printfn "%s" e.Message
