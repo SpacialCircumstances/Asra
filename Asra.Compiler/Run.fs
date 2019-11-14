@@ -16,12 +16,12 @@ let run (args: ParseResults<CLI.Arguments>) =
         | Some (CLI.Repl replArgs) ->
             let out = System.Console.Out
             let args = {
-                log = Format.format out "%s"
-                formatAst = Format.format out "%A"
-                formatIR = Format.format out "%A"
-                formatTypedIR = Format.format out "%A"
-                formatEquations = Format.format out "%A"
-                formatSubstitutions = Format.format out "%A"
+                log = Format.formatLog out
+                formatAst = Format.formatAst out
+                formatIR = Format.formatIR out
+                formatTypedIR = Format.formatTypedIR out
+                formatEquations = Format.formatEquations out
+                formatSubstitutions = Format.formatSubstitutions out
             }
             Repl.runRepl args
             0
@@ -40,12 +40,12 @@ let run (args: ParseResults<CLI.Arguments>) =
 
             let out = System.Console.Out
             let args = {
-                log = Format.format out "%s"
-                formatAst = Format.format out "%A"
-                formatIR = Format.format out "%A"
-                formatTypedIR = Format.format out "%A"
-                formatEquations = Format.format out "%A"
-                formatSubstitutions = Format.format out "%A"
+                log = Format.formatLog out
+                formatAst = Format.formatAst out
+                formatIR = Format.formatIR out
+                formatTypedIR = Format.formatTypedIR out
+                formatEquations = Format.formatEquations out
+                formatSubstitutions = Format.formatSubstitutions out
             }
             match Compiler.runCompiler args compilerArgs with
                 | Ok res -> 
