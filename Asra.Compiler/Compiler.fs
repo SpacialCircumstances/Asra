@@ -9,8 +9,6 @@ let fileRead (filename: string) =
     else
         Error (sprintf "File %s does not exist" filename)
 
-let print _ = ()
-
 let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
     let file = compilerArgs.inFile
     Errors.result {

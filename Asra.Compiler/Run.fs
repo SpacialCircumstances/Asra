@@ -14,13 +14,14 @@ let run (args: ParseResults<CLI.Arguments>) =
             printfn "asra %O" Info.compilerVersion
             0
         | Some (CLI.Repl replArgs) ->
+            let out = System.Console.Out
             let args = {
-                log = printfn "%s"
-                formatAst = printfn "%A"
-                formatIR = printfn "%A"
-                formatTypedIR = printfn "%A"
-                formatEquations = printfn "%A"
-                formatSubstitutions = printfn "%A"
+                log = Format.format out "%s"
+                formatAst = Format.format out "%A"
+                formatIR = Format.format out "%A"
+                formatTypedIR = Format.format out "%A"
+                formatEquations = Format.format out "%A"
+                formatSubstitutions = Format.format out "%A"
             }
             Repl.runRepl args
             0
@@ -37,13 +38,14 @@ let run (args: ParseResults<CLI.Arguments>) =
                 outFile = ""
             }
 
+            let out = System.Console.Out
             let args = {
-                log = printfn "%s"
-                formatAst = printfn "%A"
-                formatIR = printfn "%A"
-                formatTypedIR = printfn "%A"
-                formatEquations = printfn "%A"
-                formatSubstitutions = printfn "%A"
+                log = Format.format out "%s"
+                formatAst = Format.format out "%A"
+                formatIR = Format.format out "%A"
+                formatTypedIR = Format.format out "%A"
+                formatEquations = Format.format out "%A"
+                formatSubstitutions = Format.format out "%A"
             }
             match Compiler.runCompiler args compilerArgs with
                 | Ok res -> 
