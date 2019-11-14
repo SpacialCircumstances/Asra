@@ -4,31 +4,36 @@ open System.IO
 
 type Arguments = {
     file: string
-    astPrint: TextWriter
-    irPrint: TextWriter
-    log: TextWriter
-    tirPrint: TextWriter
+    formatAst: FrontendAst.Expression<AstCommon.SourcePosition> -> unit
+    formatIR: IR.Expression<AstCommon.SourcePosition, AstCommon.Declaration> -> unit
+    formatTypedIR: IR.Expression<Typechecker.TypeData<AstCommon.SourcePosition>, Typechecker.Declaration> -> unit
+    formatEquations: Typechecker.TypeEquation<AstCommon.SourcePosition> seq -> unit
+    formatSubstitutions: Typechecker.Substitutions -> unit
+    log: string -> unit
 }
 
-let runCompiler (args: Arguments) =
-    if File.Exists args.file then
-        let code = File.ReadAllText args.file
-        match Parser.compilerParser args.file code with
-            | Ok ast ->
-                args.astPrint.WriteLine (sprintf "%A" ast)
-                let ir = IRGenerator.map ast
-                args.irPrint.WriteLine (sprintf "%A" ir)
-                match Typechecker.generateTypenames ir with
-                    | Ok typedIR -> 
-                        args.tirPrint.WriteLine (sprintf "%A" typedIR)
-                        let eqs = Typechecker.generateEquations typedIR
-                        let subst = Typechecker.unifyAll eqs
-                        args.tirPrint.WriteLine (sprintf "%A" eqs)
-                        args.tirPrint.WriteLine (sprintf "%A" subst)
-                        Ok "Compilation finished"
-                    | Error ter ->
-                        Error (sprintf "Error: %s" ter)
-            | Error parserError ->
-                Error (sprintf "Error: %s" parserError)
+let fileRead (filename: string) =
+    if File.Exists filename then
+        File.ReadAllText filename |> Ok
     else
-        Error (sprintf "Error: File %s does not exist" args.file)
+        Error (sprintf "File %s does not exist" filename)
+
+let print _ = ()
+
+let runCompiler (args: Arguments) =
+    Errors.result {
+        let! code = fileRead args.file
+        let! ast = Parser.compilerParser args.file code
+        do args.formatAst ast
+        let ir = IRGenerator.map ast
+        do args.formatIR ir
+        let! typedIR = Typechecker.generateTypenames ir
+        do args.formatTypedIR typedIR
+        let eqs = Typechecker.generateEquations typedIR
+        do args.formatEquations eqs
+        let! subst = Typechecker.unifyAll eqs
+        do args.formatSubstitutions subst
+        let programType = (Typechecker.getType typedIR |> Typechecker.resolveType subst)
+        do args.log (sprintf "Program type: %A" programType)
+        return "Compilation finished"
+    }

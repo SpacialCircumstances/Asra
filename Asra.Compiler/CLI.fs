@@ -69,10 +69,12 @@ let run (args: ParseResults<Arguments>) =
 
             let args: Compiler.Arguments = {
                 file = compileArgs.GetResult(File)
-                astPrint = createWriter (compileArgs.TryGetResult(CompileArgs.PrintAst))
-                irPrint = createWriter (compileArgs.TryGetResult(CompileArgs.PrintIR))
-                log = System.Console.Out
-                tirPrint = createWriter (compileArgs.TryGetResult(CompileArgs.PrintTypedIR))
+                log = printfn "%s"
+                formatAst = printfn "%A"
+                formatIR = printfn "%A"
+                formatTypedIR = printfn "%A"
+                formatEquations = printfn "%A"
+                formatSubstitutions = printfn "%A"
             }
             match Compiler.runCompiler args with
                 | Ok res -> 
