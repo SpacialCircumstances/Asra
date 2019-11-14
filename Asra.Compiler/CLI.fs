@@ -3,6 +3,7 @@
 open Argu
 open System
 open System.IO
+open Types
 
 type CompileArgs =
     | [<MainCommand; ExactlyOnce; Last>] File of file:string
@@ -52,10 +53,14 @@ let run (args: ParseResults<Arguments>) =
             printfn "asra %O" Info.compilerVersion
             0
         | Some (Repl replArgs) ->
-            let args: Repl.Arguments = {
-                printAst = replArgs.Contains(ReplArgs.PrintAst)
-                printIR = replArgs.Contains(ReplArgs.PrintIR)
-                printTIR = replArgs.Contains(ReplArgs.PrintTypedIR)
+            let args = {
+                file = "REPL"
+                log = printfn "%s"
+                formatAst = printfn "%A"
+                formatIR = printfn "%A"
+                formatTypedIR = printfn "%A"
+                formatEquations = printfn "%A"
+                formatSubstitutions = printfn "%A"
             }
             Repl.runRepl args
             0
@@ -67,7 +72,7 @@ let run (args: ParseResults<Arguments>) =
                         File.CreateText(path) :> TextWriter
                     | None -> TextWriter.Null
 
-            let args: Compiler.Arguments = {
+            let args = {
                 file = compileArgs.GetResult(File)
                 log = printfn "%s"
                 formatAst = printfn "%A"

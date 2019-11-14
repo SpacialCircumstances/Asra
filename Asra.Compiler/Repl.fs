@@ -1,12 +1,7 @@
 ﻿module Repl
 
 open System
-
-type Arguments = {
-    printAst: bool
-    printIR: bool
-    printTIR: bool
-}
+open Types
 
 let readCode () =
     let mutable reading = true
@@ -27,28 +22,20 @@ let readCode () =
     String.Join("\n", lines)
 
 let runCode (args: Arguments) (code: string) =
-    match Parser.compilerParser "REPL" code with
-        | Ok ast ->
-            if args.printAst then
-                printfn "%A" ast
-            let ir = IRGenerator.map ast
-            if args.printIR then
-                printfn "%A" ir
-            match Typechecker.generateTypenames ir with
-                | Ok typedIR -> 
-                    let eqs = Typechecker.generateEquations typedIR
-                    let subst = Typechecker.unifyAll eqs
-                    if args.printTIR then
-                        printfn "%A" typedIR
-                        printfn "%A" eqs
-                        match subst with
-                            | Ok subst ->
-                                printfn "%A" subst
-                                printfn "Inferred type for program: %A" (Typechecker.getType typedIR |> Typechecker.resolveType subst)
-                            | Error se -> printfn "Type Error: %s" se
-                | Error te -> printfn "Type Error: %s" te
-        | Error pe ->
-            printfn "Parser Error: %s" pe
+    Errors.result {
+        let! ast = Parser.compilerParser "REPL" code
+        do args.formatAst ast
+        let ir = IRGenerator.map ast
+        do args.formatIR ir
+        let! typedIR = Typechecker.generateTypenames ir
+        do args.formatTypedIR typedIR
+        let eqs = Typechecker.generateEquations typedIR
+        do args.formatEquations eqs
+        let! subst = Typechecker.unifyAll eqs
+        do args.formatSubstitutions subst
+        let programType = (Typechecker.getType typedIR |> Typechecker.resolveType subst)
+        do args.log (sprintf "Program type: %A" programType)
+    } |> ignore
 
 let runRepl (args: Arguments) =
     let run = runCode args
