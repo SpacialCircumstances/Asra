@@ -29,7 +29,7 @@ with
                 | PrintTypedIR -> "Print the typed IR"
 
 type Arguments =
-    | [<Unique; AltCommandLine("-v")>] Version
+    | [<Unique; AltCommandLine("-V")>] Version
     | [<CliPrefix(CliPrefix.None)>] Repl of ParseResults<ReplArgs>
     | [<CliPrefix(CliPrefix.None); AltCommandLine("c")>] CompileFile of ParseResults<CompileArgs>
 with
