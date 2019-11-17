@@ -3,39 +3,33 @@
 open Argu
 
 type CompileArgs =
-    | [<MainCommand; ExactlyOnce; Last>] File of file:string
-    | [<EqualsAssignment>] PrintAst of path:string option
-    | [<EqualsAssignment>] PrintIR of path:string option
-    | [<EqualsAssignment>] PrintTypedIR of path:string option
+    | [<MainCommand; ExactlyOnce>] File of file:string
+    | [<Mandatory; AltCommandLine("-o")>] Out of outFile:string
+    | [<AltCommandLine("-v")>] Verbose
 with
     interface IArgParserTemplate with
         member self.Usage =
             match self with
-                | PrintAst _ -> "Print the AST after parsing, optionally to a file"
-                | PrintIR _ -> "Print the untyped IR, optionally to a file"
-                | PrintTypedIR _ -> "Print the typed IR, optionally to a file"
-                | File _ -> "Compile this file"
+                | Verbose -> "Show Log/AST/IR/TEQ/TIR"
+                | Out _ -> "The output js file"
+                | File _ -> "The file about to be compiled"
 
 type ReplArgs =
-    | PrintAst
-    | PrintIR
-    | PrintTypedIR
+    | [<AltCommandLine("-v")>] Verbose
 with
     interface IArgParserTemplate with
         member self.Usage =
             match self with
-                | PrintAst -> "Print the AST after parsing"
-                | PrintIR -> "Print the untyped IR"
-                | PrintTypedIR -> "Print the typed IR"
+                | Verbose -> "Show Log/AST/IR/TEQ/TIR"
 
 type Arguments =
     | [<Unique; AltCommandLine("-V")>] Version
     | [<CliPrefix(CliPrefix.None)>] Repl of ParseResults<ReplArgs>
-    | [<CliPrefix(CliPrefix.None); AltCommandLine("c")>] CompileFile of ParseResults<CompileArgs>
+    | [<CliPrefix(CliPrefix.None); AltCommandLine("c")>] Compile of ParseResults<CompileArgs>
 with
     interface IArgParserTemplate with
         member self.Usage =
             match self with
                 | Version -> "Print the version of Asra and exit"
-                | Repl _ -> "Launch the REPL (no interpretation, only AST/IR/TIR)"
-                | CompileFile _ -> "Compile a file to Javascript"
+                | Repl _ -> "Launch the REPL (no interpretation, only Parsing/Type checking)"
+                | Compile _ -> "Compile a file to Javascript"

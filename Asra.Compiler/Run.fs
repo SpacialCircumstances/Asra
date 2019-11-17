@@ -25,7 +25,7 @@ let run (args: ParseResults<CLI.Arguments>) =
             }
             Repl.runRepl args
             0
-        | Some (CLI.CompileFile compileArgs) ->
+        | Some (CLI.Compile compileArgs) ->
             let createWriter path = 
                 match path with
                     | Some None -> System.Console.Out
