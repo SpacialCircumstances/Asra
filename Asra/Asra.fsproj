@@ -8,6 +8,7 @@
     <Compile Include="Info.fs" />
     <Compile Include="Errors.fs" />
     <Compile Include="AstCommon.fs" />
+    <Compile Include="Prelude.fs" />
     <Compile Include="IR.fs" />
     <Compile Include="FrontendAst.fs" />
     <Compile Include="IRGenerator.fs" />

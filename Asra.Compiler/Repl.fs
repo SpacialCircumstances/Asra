@@ -27,7 +27,7 @@ let runCode (args: Arguments) (code: string) =
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
-        let! typedIR = Typechecker.generateTypenames ir
+        let! typedIR = Typechecker.generateTypenames Prelude.context ir
         do args.formatTypedIR typedIR
         let eqs = Typechecker.generateEquations typedIR
         do args.formatEquations eqs

@@ -64,7 +64,7 @@ type SymbolTable = Map<string, AType>
 
 type Substitutions = Map<string, AType>
 
-let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
+let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
     let counter = ref 0
     let next () = 
         let tn = sprintf "t%i" !counter
@@ -83,6 +83,8 @@ let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<
             | AstCommon.Function (itd, otd) -> Func (toType itd, toType otd)
             | AstCommon.Parameterized (name, parameters) ->
                 Parameterized (name, List.map toType parameters)
+
+    let initialContext = Map.map (fun k td -> toType td) initialTypes
 
     let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
         match expr with
@@ -205,7 +207,7 @@ let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<
                     return Application(newFuncExpr, newArgExpr, newData)
                 }
 
-    assignTypename Map.empty ir
+    assignTypename initialContext ir
 
 let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
 
