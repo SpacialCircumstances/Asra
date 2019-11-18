@@ -60,7 +60,10 @@ type TypeEquation<'data> = {
     right: AType
 }
 
-type SymbolTable = Map<string, AType>
+type SymbolTable = {
+    parent: SymbolTable option
+    context: Map<string, AType>
+}
 
 type Substitutions = Map<string, AType>
 
@@ -84,14 +87,38 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
             | AstCommon.Parameterized (name, parameters) ->
                 Parameterized (name, List.map toType parameters)
 
-    let initialContext = Map.map (fun k td -> toType td) initialTypes
+    let initialContext = {
+        context = Map.map (fun _ td -> toType td) initialTypes
+        parent = None
+    }
+
+    let rec containsSymbol (context: SymbolTable) (name: string) = 
+        if Map.containsKey name context.context then
+            true
+        else
+            match context.parent with
+                | Some p -> containsSymbol p name
+                | None -> false
+
+    let rec resolveSymbol (context: SymbolTable) (name: string) = 
+        match Map.tryFind name context.context with
+            | None ->
+                match context.parent with
+                    | Some p -> resolveSymbol p name
+                    | None -> invalidOp (sprintf "Failed to resolve symbol %s" name)
+            | Some s -> s
+
+    let addSymbol (context: SymbolTable) (name: string) (typ: AType) = {
+        parent = Some context
+        context = Map.ofList [ name, typ ]
+    }
 
     let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
         match expr with
-            | Variable (name, data) when Map.containsKey name context ->
+            | Variable (name, data) when containsSymbol context name ->
                 Variable (name, {
                     nodeInformation = data
-                    nodeType = Map.find name context
+                    nodeType = resolveSymbol context name
                     }) |> Ok
             | Variable (name, data) ->
                 Error (sprintf "Error in %O: Variable %s not defined" data name)
@@ -142,7 +169,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                     declType = typ
                     annotatedType = annotated
                 }
-                let innerContext = Map.add name typ context
+                let innerContext = addSymbol context name typ
                 match assignTypename innerContext expr with
                     | Ok newExpr ->
                         Lambda (newDecl, newExpr, {
@@ -159,7 +186,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                     declType = typ
                     annotatedType = annotated
                 }
-                let innerContext = Map.add name typ context
+                let innerContext = addSymbol context name typ
                 Errors.result {
                     let! newValueExpr = assignTypename context l.value
                     let! newBodyExpr = assignTypename innerContext l.body
@@ -182,7 +209,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                     declType = typ
                     annotatedType = annotated
                 }
-                let innerContext = Map.add name typ context
+                let innerContext = addSymbol context name typ
                 Errors.result {
                     let! newValueExpr = assignTypename innerContext l.value
                     let! newBodyExpr = assignTypename innerContext l.body
@@ -204,7 +231,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                         nodeInformation = data
                         nodeType = Var (next ())
                     }
-                    return Application(newFuncExpr, newArgExpr, newData)
+                    return Application (newFuncExpr, newArgExpr, newData)
                 }
 
     assignTypename initialContext ir
