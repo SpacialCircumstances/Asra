@@ -214,7 +214,7 @@ let rec resolveType (subst: Substitutions) (tp: AType) =
         | Primitive _ -> tp
         | Var s ->
             match Map.tryFind s subst with
-                | Some t -> t
+                | Some t -> resolveType subst t
                 | None -> tp
         | Func (it, ot) ->
             Func (resolveType subst it, resolveType subst ot)
