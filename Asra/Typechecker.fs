@@ -269,8 +269,16 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                 yield! generateEquations l.body
                 yield eq l.data.nodeType (getType l.body)
             | Literal (lit, data) ->
-                //In theory, we only need to infer list literals here, and we will do this later
-                ()
+                match lit with
+                    | AstCommon.Literal.List exprs ->
+                        match data.nodeType with
+                            | Parameterized ("List", [elType]) ->
+                                for expr in exprs do
+                                    yield! generateEquations expr
+                                    yield eq elType (getType expr)
+                            | _ -> invalidOp "Expected parameterized list type for list literal"
+                        ()
+                    | _ -> ()
     }
 
 let rec private occursCheck (subst: Substitutions) (a: AType) (b: AType) =
