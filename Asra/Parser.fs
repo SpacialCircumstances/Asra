@@ -167,8 +167,10 @@ let createParser (dataParser: Parser<'data, unit>) (logger: (string -> unit) opt
         namedTypeParser
     ] "Type"
 
+    let tickParser = skipChar '`'
+
     let identifierNameParser = 
-        let opParser = attempt (between leftParensParser rightParensParser operatorParser)
+        let opParser = attempt (between tickParser tickParser operatorParser)
         opParser <|> nameParser
 
     let typeAnnotatedParser = identifierNameParser .>>? spaces .>>? skipChar ':' .>>? spaces .>>.? typeDeclarationParser |>> TypeAnnotated
