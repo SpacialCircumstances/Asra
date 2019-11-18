@@ -197,7 +197,7 @@ let testCases () =
                 Variable ("a", ())
                 Variable ("b", ())
             ], ()), ())
-        "(+) 1 2", FunctionCall (Variable ("+", ()), [
+        "`+` 1 2", FunctionCall (Variable ("+", ()), [
             Literal (Int 1L, ())
             Literal (Int 2L, ())
         ], ())
@@ -213,7 +213,7 @@ let testCases () =
             ())
         """
         let 
-            ((+): Int -> Int) = fun a b -> plus a b
+            (`+`: Int -> Int) = fun a b -> plus a b
         in
             2 + -12
         end
@@ -245,6 +245,14 @@ let testCases () =
             Group (FunctionCall (Variable ("f", ()), [ Variable("x", ()) ], ()), ())
             Literal (List [], ())
         ], ())
+        "let `+` = fun a b -> (plus a b) in 2 + 2 end", Let ([
+            None, Named "+", Lambda ([
+                Named "a"
+                Named "b"
+            ], Group (FunctionCall (Variable ("plus", ()), [
+                Variable ("a", ())
+                Variable ("b", ())], ()), ()), ())   
+        ], BinaryOperatorCall (Literal (Int 2L, ()), "+", Literal (Int 2L, ()), ()), ())
     ] |> Seq.map (fun (code, ast) -> [| box code; box ast|])
 
 [<Theory>]
