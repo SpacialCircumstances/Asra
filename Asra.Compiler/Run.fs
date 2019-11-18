@@ -14,39 +14,37 @@ let run (args: ParseResults<CLI.Arguments>) =
             printfn "asra %O" Info.compilerVersion
             0
         | Some (CLI.Repl replArgs) ->
+            let verbose = replArgs.Contains(CLI.ReplArgs.Verbose)
             let out = System.Console.Out
+            let nulls = System.IO.TextWriter.Null
             let args = {
                 log = Format.formatLog out
-                formatAst = Format.formatAst out
-                formatIR = Format.formatIR out
-                formatTypedIR = Format.formatTypedIR out
-                formatEquations = Format.formatEquations out
-                formatSubstitutions = Format.formatSubstitutions out
+                formatAst = Format.formatAst (if verbose then out else nulls)
+                formatIR = Format.formatIR (if verbose then out else nulls)
+                formatTypedIR = Format.formatTypedIR (if verbose then out else nulls)
+                formatEquations = Format.formatEquations (if verbose then out else nulls)
+                formatSubstitutions = Format.formatSubstitutions (if verbose then out else nulls)
             }
             Repl.runRepl args
             0
         | Some (CLI.Compile compileArgs) ->
-            let createWriter path = 
-                match path with
-                    | Some None -> System.Console.Out
-                    | Some (Some path) ->
-                        File.CreateText(path) :> TextWriter
-                    | None -> TextWriter.Null
+            let verbose = compileArgs.Contains(CLI.CompileArgs.Verbose)
+            let out = System.Console.Out
+            let nulls = System.IO.TextWriter.Null
+            let args = {
+                log = Format.formatLog out
+                formatAst = Format.formatAst (if verbose then out else nulls)
+                formatIR = Format.formatIR (if verbose then out else nulls)
+                formatTypedIR = Format.formatTypedIR (if verbose then out else nulls)
+                formatEquations = Format.formatEquations (if verbose then out else nulls)
+                formatSubstitutions = Format.formatSubstitutions (if verbose then out else nulls)
+            }
 
             let compilerArgs = {
                 inFile = compileArgs.GetResult(CLI.File)
-                outFile = ""
+                outFile = compileArgs.GetResult(CLI.Out)
             }
 
-            let out = System.Console.Out
-            let args = {
-                log = Format.formatLog out
-                formatAst = Format.formatAst out
-                formatIR = Format.formatIR out
-                formatTypedIR = Format.formatTypedIR out
-                formatEquations = Format.formatEquations out
-                formatSubstitutions = Format.formatSubstitutions out
-            }
             match Compiler.runCompiler args compilerArgs with
                 | Ok res -> 
                     printfn "%s" res
