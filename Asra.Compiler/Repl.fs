@@ -22,7 +22,7 @@ let readCode () =
     String.Join("\n", lines)
 
 let runCode (args: Arguments) (code: string) =
-    Errors.result {
+    let replResult = Errors.result {
         let! ast = Parser.compilerParser "REPL" code
         do args.formatAst ast
         let ir = IRGenerator.map ast
@@ -33,9 +33,12 @@ let runCode (args: Arguments) (code: string) =
         do args.formatEquations eqs
         let! subst = Typechecker.unifyAll eqs
         do args.formatSubstitutions subst
-        let programType = (Typechecker.getType typedIR |> Typechecker.resolveType subst)
-        do args.log (sprintf "Program type: %A" programType)
-    } |> ignore
+        return (Typechecker.getType typedIR |> Typechecker.resolveType subst)
+    }
+
+    match replResult with
+        | Ok tp -> args.log (sprintf "Program type: %A" tp)
+        | Error e -> args.log (sprintf "Error: %s" e)
 
 let runRepl (args: Arguments) =
     let run = runCode args
