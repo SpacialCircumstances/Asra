@@ -110,7 +110,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                     nodeType = resolveSymbol context name
                     }) |> Ok
             | Variable (name, data) ->
-                Error (sprintf "Error in %O: Variable %s not defined" data name)
+                Error (sprintf "Error: Variable %s not defined in %O" name data)
             | Literal (lit, data) ->
                 let newLit = 
                     match lit with
@@ -342,4 +342,8 @@ let rec private unify (subst: Substitutions) (left: AType) (right: AType) =
             | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
 
 let unifyAll (eqs: TypeEquation<'data> seq) =
-    Seq.fold (fun st eq -> Result.bind (fun subst -> unify subst eq.left eq.right) st) (Ok Map.empty) eqs
+    Seq.fold (fun st eq -> 
+        st 
+        |> Result.bind (fun subst -> 
+            unify subst eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
+        (Ok Map.empty) eqs
