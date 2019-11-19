@@ -60,10 +60,9 @@ type TypeEquation<'data> = {
     right: AType
 }
 
-type SymbolTable = {
-    parent: SymbolTable option
-    context: Map<string, AType>
-}
+type SymbolTable = 
+    | Empty
+    | Data of string * AType * SymbolTable
 
 type Substitutions = Map<string, AType>
 
@@ -87,31 +86,21 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
             | AstCommon.Parameterized (name, parameters) ->
                 Parameterized (name, List.map toType parameters)
 
-    let initialContext = {
-        context = Map.map (fun _ td -> toType td) initialTypes
-        parent = None
-    }
-
     let rec containsSymbol (context: SymbolTable) (name: string) = 
-        if Map.containsKey name context.context then
-            true
-        else
-            match context.parent with
-                | Some p -> containsSymbol p name
-                | None -> false
+        match context with
+            | Empty -> false
+            | Data (n, _, _) when n = name -> true
+            | Data (_, _, p) -> containsSymbol p name
 
     let rec resolveSymbol (context: SymbolTable) (name: string) = 
-        match Map.tryFind name context.context with
-            | None ->
-                match context.parent with
-                    | Some p -> resolveSymbol p name
-                    | None -> invalidOp (sprintf "Failed to resolve symbol %s" name)
-            | Some s -> s
+        match context with
+            | Empty -> invalidOp (sprintf "Error resolving symbol %s" name)
+            | Data (n, tp, _) when n = name -> tp
+            | Data (_, _, p) -> resolveSymbol p name
 
-    let addSymbol (context: SymbolTable) (name: string) (typ: AType) = {
-        parent = Some context
-        context = Map.ofList [ name, typ ]
-    }
+    let addSymbol (context: SymbolTable) (name: string) (typ: AType) = Data (name, typ, context)
+
+    let initialContext = Map.fold (fun c k t -> addSymbol c k (toType t)) Empty initialTypes
 
     let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
         match expr with
