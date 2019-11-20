@@ -14,6 +14,7 @@ type AType =
     | Primitive of Primitive
     | Func of AType * AType
     | Var of string
+    | QVar of string
     | Parameterized of string * AType list
 with
     override self.ToString () =
@@ -22,10 +23,13 @@ with
             | Parameterized (name, types) -> parameterizedToString (name, types)
             | Primitive str -> str.ToString ()
             | Var tp -> "'" + tp
+            | QVar v -> sprintf "forall %s. '%s" v v
             | Func (input, output) -> 
                 match input with
                     | Var tp ->
                         sprintf "'%s -> %O" tp output
+                    | QVar v ->
+                        sprintf "forall %s. '%s -> %O" v v output
                     | Primitive tp ->
                         sprintf "%O -> %O" tp output
                     | Parameterized (name, types) ->
@@ -230,6 +234,7 @@ let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
 let rec resolveType (subst: Substitutions) (tp: AType) =
     match tp with
         | Primitive _ -> tp
+        | QVar v -> QVar v
         | Var s ->
             match Map.tryFind s subst with
                 | Some t -> resolveType subst t
