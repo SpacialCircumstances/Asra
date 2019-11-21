@@ -31,9 +31,8 @@ let runCode (args: Arguments) (code: string) =
         do args.formatTypedIR typedIR
         let eqs = Typechecker.generateEquations typedIR
         do args.formatEquations eqs
-        let! subst = Typechecker.unifyAll eqs
-        do args.formatSubstitutions subst
-        return (Typechecker.getType typedIR |> Typechecker.resolveType subst)
+        do! Typechecker.unifyAll eqs
+        return (Typechecker.getType typedIR |> Typechecker.resolveType)
     }
 
     match replResult with
