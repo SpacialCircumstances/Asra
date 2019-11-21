@@ -199,28 +199,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                     }
                 }
             | LetRec l ->
-                let (name, typ, annotated) = match l.binding with
-                                                | AstCommon.Named n -> n, newVar level, None
-                                                | AstCommon.TypeAnnotated (n, tp) -> n, newVar level, Some (toType level tp)
-                let newBinding = {
-                    name = name
-                    declType = typ
-                    annotatedType = annotated
-                }
-                let innerContext = addSymbol context name typ
-                Errors.result {
-                    let! newValueExpr = assignTypename innerContext (level + 1) l.value
-                    let! newBodyExpr = assignTypename innerContext level l.body
-                    return LetRec {
-                        binding = newBinding
-                        value = newValueExpr
-                        body = newBodyExpr
-                        data = {
-                            nodeInformation = l.data
-                            nodeType = newVar level
-                        }
-                    }
-                }
+                invalidOp "Not implemented"
             | Application (funcExpr, argExpr, data) ->
                 Errors.result {
                     let! newFuncExpr = assignTypename context level funcExpr
