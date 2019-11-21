@@ -186,7 +186,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                 }
                 let innerContext = addSymbol context name typ
                 Errors.result {
-                    let! newValueExpr = assignTypename context level l.value
+                    let! newValueExpr = assignTypename context (level + 1) l.value
                     let! newBodyExpr = assignTypename innerContext level l.body
                     return Let {
                         binding = newBinding
@@ -209,7 +209,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                 }
                 let innerContext = addSymbol context name typ
                 Errors.result {
-                    let! newValueExpr = assignTypename innerContext level l.value
+                    let! newValueExpr = assignTypename innerContext (level + 1) l.value
                     let! newBodyExpr = assignTypename innerContext level l.body
                     return LetRec {
                         binding = newBinding
