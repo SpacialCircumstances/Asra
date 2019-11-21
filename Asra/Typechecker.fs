@@ -9,39 +9,17 @@ type Primitive =
     | String
     | Unit
 
-[<StructuredFormatDisplay("{AsString}")>]
-type AType =
+type CheckerType =
     | Primitive of Primitive
-    | Func of AType * AType
+    | Func of CheckerType * CheckerType
     | Var of string
     | QVar of string
-    | Parameterized of string * AType list
-with
-    override self.ToString () =
-        let parameterizedToString (name, types: AType list) = sprintf "%s %s" name (System.String.Join(" ", types))
-        match self with
-            | Parameterized (name, types) -> parameterizedToString (name, types)
-            | Primitive str -> str.ToString ()
-            | Var tp -> "'" + tp
-            | QVar v -> sprintf "forall %s. '%s" v v
-            | Func (input, output) -> 
-                match input with
-                    | Var tp ->
-                        sprintf "'%s -> %O" tp output
-                    | QVar v ->
-                        sprintf "forall %s. '%s -> %O" v v output
-                    | Primitive tp ->
-                        sprintf "%O -> %O" tp output
-                    | Parameterized (name, types) ->
-                        sprintf "(%s) -> %O" (parameterizedToString (name, types)) output
-                    | Func (fti, fto) ->
-                        sprintf "(%O -> %O) -> %O" fti fto output
-    member self.AsString = self.ToString()
+    | Parameterized of string * CheckerType list
 
 [<StructuredFormatDisplay("{AsString}")>]
 type TypeData<'oldData> = {
     nodeInformation: 'oldData
-    nodeType: AType
+    nodeType: CheckerType
 }
 with
     override self.ToString () = sprintf "{ type = %A @%A }" self.nodeType self.nodeInformation
@@ -50,8 +28,8 @@ with
 [<StructuredFormatDisplay("{AsString}")>]
 type Declaration = {
     name: string
-    declType: AType
-    annotatedType: AType option
+    declType: CheckerType
+    annotatedType: CheckerType option
 }
 with
     override self.ToString () = sprintf "(%s: %A)" self.name self.declType
@@ -60,15 +38,15 @@ with
 [<StructuredFormatDisplay("{left} = {right}")>]
 type TypeEquation<'data> = {
     origin: Expression<TypeData<'data>, Declaration>
-    left: AType
-    right: AType
+    left: CheckerType
+    right: CheckerType
 }
 
 type SymbolTable = 
     | Empty
-    | Data of string * AType * SymbolTable
+    | Data of string * CheckerType * SymbolTable
 
-type Substitutions = Map<string, AType>
+type Substitutions = Map<string, CheckerType>
 
 let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
     let counter = ref 0
@@ -102,7 +80,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
             | Data (n, tp, _) when n = name -> tp
             | Data (_, _, p) -> resolveSymbol p name
 
-    let addSymbol (context: SymbolTable) (name: string) (typ: AType) = Data (name, typ, context)
+    let addSymbol (context: SymbolTable) (name: string) (typ: CheckerType) = Data (name, typ, context)
 
     let initialContext = Map.fold (fun c k t -> addSymbol c k (toType t)) Empty initialTypes
 
@@ -231,19 +209,6 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
 
 let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
 
-let rec resolveType (subst: Substitutions) (tp: AType) =
-    match tp with
-        | Primitive _ -> tp
-        | QVar v -> QVar v
-        | Var s ->
-            match Map.tryFind s subst with
-                | Some t -> resolveType subst t
-                | None -> tp
-        | Func (it, ot) ->
-            Func (resolveType subst it, resolveType subst ot)
-        | Parameterized (name, parameters) ->
-            Parameterized (name, List.map (resolveType subst) parameters)
-
 let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
     let eq l r = {
         left = l
@@ -302,7 +267,7 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                     | _ -> ()
     }
 
-let rec private occursCheck (subst: Substitutions) (a: AType) (b: AType) =
+let rec private occursCheck (subst: Substitutions) (a: CheckerType) (b: CheckerType) =
     if a = b then
         true
     else
@@ -315,7 +280,7 @@ let rec private occursCheck (subst: Substitutions) (a: AType) (b: AType) =
                 List.exists (fun tp -> occursCheck subst a tp) tps
             | _ -> false
 
-let rec private unifyVariable (subst: Substitutions) (a: AType) (b: AType) unify =
+let rec private unifyVariable (subst: Substitutions) (a: CheckerType) (b: CheckerType) unify =
     match a with
         | Var aVar ->
             match Map.tryFind aVar subst with
@@ -330,7 +295,7 @@ let rec private unifyVariable (subst: Substitutions) (a: AType) (b: AType) unify
                             Map.add aVar b subst |> Ok
         | _ -> invalidOp "Expected Var type"
 
-let rec private unify (subst: Substitutions) (left: AType) (right: AType) =
+let rec private unify (subst: Substitutions) (left: CheckerType) (right: CheckerType) =
     if left = right then
         Ok subst
     else
@@ -352,3 +317,20 @@ let unifyAll (eqs: TypeEquation<'data> seq) =
         |> Result.bind (fun subst -> 
             unify subst eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
         (Ok Map.empty) eqs
+
+let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =
+    match tp with
+        | Primitive Int -> Types.Primitive Types.Int
+        | Primitive Float -> Types.Primitive Types.Float
+        | Primitive Unit -> Types.Primitive Types.Unit
+        | Primitive String -> Types.Primitive Types.String
+        | Primitive Bool -> Types.Primitive Types.Bool
+        | QVar v -> Types.QVar v
+        | Var s ->
+            match Map.tryFind s subst with
+                | Some t -> resolveType subst t
+                | None -> Types.Var s
+        | Func (it, ot) ->
+            Types.Func (resolveType subst it, resolveType subst ot)
+        | Parameterized (name, parameters) ->
+            Types.Parameterized (name, List.map (resolveType subst) parameters)

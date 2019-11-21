@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Types.fs" />
     <Compile Include="Info.fs" />
     <Compile Include="Errors.fs" />
     <Compile Include="AstCommon.fs" />
