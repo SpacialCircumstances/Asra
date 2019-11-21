@@ -55,8 +55,6 @@ type SymbolTable =
     | Empty
     | Data of string * CheckerType * SymbolTable
 
-type Substitutions = Map<string, CheckerType>
-
 let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
     let counter = ref 0
 

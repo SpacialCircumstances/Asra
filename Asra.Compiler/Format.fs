@@ -27,7 +27,3 @@ let formatTypedIR: Formatter<IR.Expression<Typechecker.TypeData<AstCommon.Source
 let formatEquations: Formatter<Typechecker.TypeEquation<AstCommon.SourcePosition> seq> =
     withHeader "Type equations" (fun fmt eqs -> 
         Seq.iter (fun eq -> fmt "%A" eq) eqs)
-
-let formatSubstitutions: Formatter<Typechecker.Substitutions> = 
-    withHeader "Type substitutions" (fun fmt subst -> 
-        Map.iter (fmt "'%s = %A") subst)
