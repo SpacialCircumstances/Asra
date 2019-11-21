@@ -74,6 +74,8 @@ type SymbolTable =
     | Empty
     | Data of string * CheckerType * SymbolTable
 
+let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
+
 let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
     let counter = ref 0
 
@@ -112,6 +114,29 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
     let initialContext = Map.fold (fun c k t -> addSymbol c k (toType 0 t)) Empty initialTypes
 
     let rec assignTypename (context: SymbolTable) (level: int) (expr: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
+        let rec generalize (tp: CheckerType) =
+            match tp with
+                | Var {contents = Unbound (name, l) } when l > level -> QVar name
+                | Var {contents = Link ty} -> generalize ty
+                | Func (ty1, ty2) -> Func (generalize ty1, generalize ty2)
+                | ty -> ty
+
+        let inst (tp: CheckerType) =
+            let rec loop subst = function
+                | QVar name -> 
+                    match List.tryFind (fun (k, _) -> k = name) subst with
+                        | Some (_, found) -> found, subst
+                        | None ->
+                            let tv = newVar level
+                            tv, (name, tv) :: subst
+                | Var {contents = Link ty} -> loop subst ty
+                | Func (t1, t2) -> 
+                    let (ty1, subst) = loop subst t1
+                    let (ty2, subst) = loop subst t2
+                    Func (ty1,ty2), subst
+                | ty -> (ty, subst)
+            fst (loop [] tp)
+        
         match expr with
             | Variable (name, data) when containsSymbol context name ->
                 Variable (name, {
@@ -212,8 +237,6 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                 }
 
     assignTypename initialContext 0 ir
-
-let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
 
 let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
     let eq l r = {
