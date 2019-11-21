@@ -9,21 +9,40 @@ type Primitive =
     | String
     | Unit
 
+[<StructuredFormatDisplay("{AsString}")>]
 type TypeVar =
     | Unbound of string * int
     | Link of CheckerType
 with
     override x.ToString () =
         match x with
-            | Unbound (v, _) -> v
+            | Unbound (v, _) -> sprintf "'%s" v
             | Link l -> string l
+    member self.AsString = self.ToString ()
 
-and CheckerType =
+and [<StructuredFormatDisplay("{AsString}")>] CheckerType =
     | Primitive of Primitive
     | Func of CheckerType * CheckerType
     | Var of TypeVar ref
     | QVar of string
     | Parameterized of string * CheckerType list
+with
+    override x.ToString () =
+        let resolve tp = match tp with
+                            | Var { contents = Link o } -> o
+                            | _ -> tp
+    
+        match x with
+            | Primitive a -> sprintf "%A" a
+            | Var tv -> string (!tv)
+            | QVar q -> sprintf "%s?" q
+            | Parameterized (n, tps) -> sprintf "%s %s" n (System.String.Join(" ", tps))
+            | Func (fIn, fOut) ->
+                let fInStr = match resolve fIn with
+                                | Func _ -> sprintf "(%s)" (string fIn)
+                                | _ -> string fIn
+                sprintf "%s -> %s" fInStr (string fOut)
+    member self.AsString = self.ToString ()
 
 [<StructuredFormatDisplay("{AsString}")>]
 type TypeData<'oldData> = {
