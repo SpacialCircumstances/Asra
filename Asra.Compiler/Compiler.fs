@@ -21,8 +21,9 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.formatTypedIR typedIR
         let eqs = Typechecker.generateEquations typedIR
         do args.formatEquations eqs
-        do! Typechecker.unifyAll eqs
-        let programType = (Typechecker.getType typedIR |> Typechecker.resolveType)
+        let! subst = Typechecker.unifyAll eqs
+        do args.formatSubstitutions subst
+        let programType = (Typechecker.getType typedIR |> Typechecker.resolveType subst)
         do args.log (sprintf "Program type: %A" programType)
         return "Compilation finished"
     }

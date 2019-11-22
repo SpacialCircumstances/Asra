@@ -23,6 +23,7 @@ let run (args: ParseResults<CLI.Arguments>) =
                 formatIR = Format.formatIR (if verbose then out else nulls)
                 formatTypedIR = Format.formatTypedIR (if verbose then out else nulls)
                 formatEquations = Format.formatEquations (if verbose then out else nulls)
+                formatSubstitutions = Format.formatSubstitutions (if verbose then out else nulls)
             }
             Repl.runRepl args
             0
@@ -36,6 +37,7 @@ let run (args: ParseResults<CLI.Arguments>) =
                 formatIR = Format.formatIR (if verbose then out else nulls)
                 formatTypedIR = Format.formatTypedIR (if verbose then out else nulls)
                 formatEquations = Format.formatEquations (if verbose then out else nulls)
+                formatSubstitutions = Format.formatSubstitutions (if verbose then out else nulls)
             }
 
             let compilerArgs = {

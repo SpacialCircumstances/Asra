@@ -9,46 +9,17 @@ type Primitive =
     | String
     | Unit
 
-[<StructuredFormatDisplay("{AsString}")>]
-type TypeVar =
-    | Unbound of string * int
-    | Link of CheckerType
-with
-    override x.ToString () =
-        match x with
-            | Unbound (v, l) -> sprintf "'%s(%i)" v l
-            | Link l -> string l
-    member self.AsString = self.ToString ()
-
-and [<StructuredFormatDisplay("{AsString}")>] CheckerType =
+type CheckerType =
     | Primitive of Primitive
     | Func of CheckerType * CheckerType
-    | Var of TypeVar ref
+    | Var of string
     | QVar of string
     | Parameterized of string * CheckerType list
-with
-    override x.ToString () =
-        let resolve tp = match tp with
-                            | Var { contents = Link o } -> o
-                            | _ -> tp
-    
-        match x with
-            | Primitive a -> sprintf "%A" a
-            | Var tv -> string (!tv)
-            | QVar q -> sprintf "%s?" q
-            | Parameterized (n, tps) -> sprintf "%s %s" n (System.String.Join(" ", tps))
-            | Func (fIn, fOut) ->
-                let fInStr = match resolve fIn with
-                                | Func _ -> sprintf "(%s)" (string fIn)
-                                | _ -> string fIn
-                sprintf "%s -> %s" fInStr (string fOut)
-    member self.AsString = self.ToString ()
 
 [<StructuredFormatDisplay("{AsString}")>]
 type TypeData<'oldData> = {
     nodeInformation: 'oldData
     nodeType: CheckerType
-    level: int
 }
 with
     override self.ToString () = sprintf "{ type = %A @%A }" self.nodeType self.nodeInformation
@@ -75,28 +46,27 @@ type SymbolTable =
     | Empty
     | Data of string * CheckerType * SymbolTable
 
-let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
+type Substitutions = Map<string, CheckerType>
 
 let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
     let counter = ref 0
-
-    let newVar level = 
+    let next () = 
         let tn = sprintf "t%i" !counter
         incr counter
-        Var (ref (Unbound (tn, level)))
+        tn
 
-    let rec toType (level: int) (td: AstCommon.TypeDeclaration) =
+    let rec toType (td: AstCommon.TypeDeclaration) =
         match td with
             | AstCommon.Name "Int" -> Primitive Int
             | AstCommon.Name "String" -> Primitive String
             | AstCommon.Name "Float" -> Primitive Float
             | AstCommon.Name "Bool" -> Primitive Bool
             | AstCommon.Name "Unit" -> Primitive Unit
-            | AstCommon.Name _ -> newVar level //TODO
-            | AstCommon.Generic _ -> newVar level //TODO
-            | AstCommon.Function (itd, otd) -> Func (toType level itd, toType level otd)
+            | AstCommon.Name _ -> Var (next ()) //TODO
+            | AstCommon.Generic _ -> Var (next ()) //TODO
+            | AstCommon.Function (itd, otd) -> Func (toType itd, toType otd)
             | AstCommon.Parameterized (name, parameters) ->
-                Parameterized (name, List.map (toType level) parameters)
+                Parameterized (name, List.map toType parameters)
 
     let rec containsSymbol (context: SymbolTable) (name: string) = 
         match context with
@@ -112,38 +82,14 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
 
     let addSymbol (context: SymbolTable) (name: string) (typ: CheckerType) = Data (name, typ, context)
 
-    let initialContext = Map.fold (fun c k t -> addSymbol c k (toType 0 t)) Empty initialTypes
+    let initialContext = Map.fold (fun c k t -> addSymbol c k (toType t)) Empty initialTypes
 
-    let rec assignTypename (context: SymbolTable) (level: int) (expr: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
-        let rec generalize (tp: CheckerType) =
-            match tp with
-                | Var {contents = Unbound (name, l) } when l > level -> QVar name
-                | Var {contents = Link ty} -> generalize ty
-                | Func (ty1, ty2) -> Func (generalize ty1, generalize ty2)
-                | ty -> ty
-
-        let inst (tp: CheckerType) =
-            let rec loop subst = function
-                | QVar name -> 
-                    match List.tryFind (fun (k, _) -> k = name) subst with
-                        | Some (_, found) -> found, subst
-                        | None ->
-                            let tv = newVar level
-                            tv, (name, tv) :: subst
-                | Var {contents = Link ty} -> loop subst ty
-                | Func (t1, t2) -> 
-                    let (ty1, subst) = loop subst t1
-                    let (ty2, subst) = loop subst t2
-                    Func (ty1,ty2), subst
-                | ty -> (ty, subst)
-            fst (loop [] tp)
-        
+    let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
         match expr with
             | Variable (name, data) when containsSymbol context name ->
                 Variable (name, {
                     nodeInformation = data
                     nodeType = resolveSymbol context name
-                    level = level
                     }) |> Ok
             | Variable (name, data) ->
                 Error (sprintf "Error: Variable %s not defined in %O" name data)
@@ -162,90 +108,106 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                             Ok (AstCommon.Float f, Primitive Float)
                         | AstCommon.List exprs -> 
                             match exprs 
-                                |> List.map (assignTypename context level)
+                                |> List.map (assignTypename context)
                                 |> Errors.collectErrors with
                                     | exprs, [] ->
                                         let lit = AstCommon.List exprs
-                                        Ok (lit, Parameterized ("List", [ newVar level ]))
+                                        Ok (lit, Parameterized ("List", [ Var (next ()) ]))
                                     | _, errs -> Error errs
                 match newLit with
                     | Ok (literal, litType) ->
                         Literal (literal, {
                             nodeInformation = data
                             nodeType = litType
-                            level = level
                         }) |> Ok
                     | Error errors -> Error (System.String.Join (", ", errors))
             | If (condExpr, ifExpr, elseExpr, data) ->
                 Errors.result {
-                    let! cond = assignTypename context level condExpr
-                    let! ifE = assignTypename context level ifExpr
-                    let! elseE = assignTypename context level elseExpr 
+                    let! cond = assignTypename context condExpr
+                    let! ifE = assignTypename context ifExpr
+                    let! elseE = assignTypename context elseExpr 
                     return If (cond, ifE, elseE, {
                         nodeInformation = data
-                        nodeType = newVar level
-                        level = level
+                        nodeType = Var (next ())
                     })
                 }
             | Lambda (decl, expr, data) ->
                 let (name, typ, annotated) = match decl with
-                                                | AstCommon.Named n -> n, newVar level, None
-                                                | AstCommon.TypeAnnotated (n, tp) -> n, newVar level, Some (toType level tp)
+                                                | AstCommon.Named n -> n, Var (next ()), None
+                                                | AstCommon.TypeAnnotated (n, tp) -> n, Var (next ()), Some (toType tp)
                 let newDecl = {
                     name = name
                     declType = typ
                     annotatedType = annotated
                 }
                 let innerContext = addSymbol context name typ
-                match assignTypename innerContext level expr with
+                match assignTypename innerContext expr with
                     | Ok newExpr ->
                         Lambda (newDecl, newExpr, {
                             nodeInformation = data
-                            nodeType = newVar level
-                            level = level
+                            nodeType = Var (next ())
                         }) |> Ok
                     | Error e -> Error e
             | Let l ->
-                let (name, annotated) = match l.binding with
-                                                | AstCommon.Named n -> n, None
-                                                | AstCommon.TypeAnnotated (n, tp) -> n, Some (toType level tp)
-                
+                let (name, typ, annotated) = match l.binding with
+                                                | AstCommon.Named n -> n, Var (next ()), None
+                                                | AstCommon.TypeAnnotated (n, tp) -> n, Var (next ()), Some (toType tp)
+                let newBinding = {
+                    name = name
+                    declType = typ
+                    annotatedType = annotated
+                }
+                let innerContext = addSymbol context name typ
                 Errors.result {
-                    let! newValueExpr = assignTypename context (level + 1) l.value
-                    let valueType = getType newValueExpr
-                    let newBinding = {
-                        name = name
-                        declType = valueType
-                        annotatedType = annotated
-                    }
-                    let innerContext = addSymbol context name valueType
-                    let! newBodyExpr = assignTypename innerContext level l.body
+                    let! newValueExpr = assignTypename context l.value
+                    let! newBodyExpr = assignTypename innerContext l.body
                     return Let {
                         binding = newBinding
                         value = newValueExpr
                         body = newBodyExpr
                         data = {
                             nodeInformation = l.data
-                            nodeType = newVar level
-                            level = level
+                            nodeType = Var (next ())
                         }
                     }
                 }
             | LetRec l ->
-                invalidOp "Not implemented"
+                let (name, typ, annotated) = match l.binding with
+                                                | AstCommon.Named n -> n, Var (next ()), None
+                                                | AstCommon.TypeAnnotated (n, tp) -> n, Var (next ()), Some (toType tp)
+                let newBinding = {
+                    name = name
+                    declType = typ
+                    annotatedType = annotated
+                }
+                let innerContext = addSymbol context name typ
+                Errors.result {
+                    let! newValueExpr = assignTypename innerContext l.value
+                    let! newBodyExpr = assignTypename innerContext l.body
+                    return LetRec {
+                        binding = newBinding
+                        value = newValueExpr
+                        body = newBodyExpr
+                        data = {
+                            nodeInformation = l.data
+                            nodeType = Var (next ())
+                        }
+                    }
+                }
             | Application (funcExpr, argExpr, data) ->
                 Errors.result {
-                    let! newFuncExpr = assignTypename context level funcExpr
-                    let! newArgExpr = assignTypename context level argExpr
+                    let! newFuncExpr = assignTypename context funcExpr
+                    let! newArgExpr = assignTypename context argExpr
                     let newData = {
                         nodeInformation = data
-                        nodeType = newVar level
-                        level = level
+                        nodeType = Var (next ())
                     }
                     return Application (newFuncExpr, newArgExpr, newData)
                 }
 
-    assignTypename initialContext 0 ir
+    assignTypename initialContext ir
+
+let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
 
 let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
     let eq l r = {
@@ -280,6 +242,7 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                         | None -> ()
                         | Some annotated ->
                             yield eq l.binding.declType annotated
+                yield eq l.binding.declType (getType l.value)
                 yield! generateEquations l.body
                 yield eq l.data.nodeType (getType l.body)
             | LetRec l ->
@@ -304,48 +267,46 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                     | _ -> ()
     }
 
-let rec private occursCheck (tv: TypeVar ref) (tp: CheckerType) =
-    match tp with
-        | Var tv2 when tv = tv2 -> true
-        | Var ({ contents = Unbound (name, level) } as tv2) ->
-            let minLevel = match !tv with
-                            | Unbound (_, level2) -> min level level2
-                            | _ -> level
-            tv2 := Unbound (name, minLevel)
-            false
-        | Var { contents = Link typ } -> occursCheck tv typ
-        | Func (t1, t2) ->
-            let o1 = occursCheck tv t1
-            let o2 = occursCheck tv t2
-            o1 || o2
-        | _ -> false
+let rec private occursCheck (subst: Substitutions) (a: CheckerType) (b: CheckerType) =
+    if a = b then
+        true
+    else
+        match b with
+            | Var bVar when Map.containsKey bVar subst ->
+                occursCheck subst a (Map.find bVar subst) 
+            | Func (bi, bo) ->
+                occursCheck subst a bi || occursCheck subst a bo
+            | Parameterized (_, tps) ->
+                List.exists (fun tp -> occursCheck subst a tp) tps
+            | _ -> false
 
-let rec private unify (left: CheckerType) (right: CheckerType) =
+let rec private unifyVariable (subst: Substitutions) (a: CheckerType) (b: CheckerType) unify =
+    match a with
+        | Var aVar ->
+            match Map.tryFind aVar subst with
+                | Some tp -> unify subst tp b
+                | None ->
+                    match b with
+                        | Var bvar when Map.containsKey bvar subst ->
+                            unifyVariable subst a (Map.find bvar subst) unify
+                        | _ when occursCheck subst a b ->
+                            Error (sprintf "Cannot unify type %A with %A" a b)
+                        | _ -> 
+                            Map.add aVar b subst |> Ok
+        | _ -> invalidOp "Expected Var type"
+
+let rec private unify (subst: Substitutions) (left: CheckerType) (right: CheckerType) =
     if left = right then
-        Ok ()
+        Ok subst
     else
         match left, right with
-            | Var ({ contents = Unbound _ } as tv), t 
-            | t, Var ({ contents = Unbound _ } as tv)-> 
-                match occursCheck tv t with
-                    | false -> 
-                        tv := Link t
-                        Ok ()
-                    | true -> Error (sprintf "Cannot unify types: %A contains %A" tv t)
-            | Var { contents = Link t1}, t2
-            | t1, Var { contents = Link t2} ->
-                unify t1 t2
-            | Func (ti1, to1), Func (ti2, to2) ->
-                match unify ti1 ti2, unify to1 to2 with
-                    | Ok _, Ok _ -> Ok ()
-                    | Error e1, Error e2 -> Error (sprintf "%s; %s" e1 e2)
-                    | Error a, _ 
-                    | _, Error a -> Error a
+            | Var _, _ -> unifyVariable subst left right unify
+            | _, Var _ -> unifyVariable subst right left unify
+            | Func (li, lo), Func (ri, ro) ->
+                Result.bind (fun subst -> unify subst lo ro) (unify subst li ri)
             | Parameterized (ln, lps), Parameterized (rn, rps) ->
                 if ln = rn && (List.length lps) = (List.length rps) then
-                    match Errors.collectErrors (List.map2 (fun a b -> unify a b) lps rps) with
-                        | _, [] -> Ok ()
-                        | errs, _ -> System.String.Join (", ", errs) |> Error
+                    List.fold2 (fun s a b -> Result.bind (fun s -> unify s a b) s) (Ok subst) lps rps
                 else
                      Error (sprintf "Cannot unify type %A with %A" left right)
             | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
@@ -353,11 +314,11 @@ let rec private unify (left: CheckerType) (right: CheckerType) =
 let unifyAll (eqs: TypeEquation<'data> seq) =
     Seq.fold (fun st eq -> 
         st 
-        |> Result.bind (fun _ -> 
-            unify eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
-        (Ok ()) eqs
+        |> Result.bind (fun subst -> 
+            unify subst eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
+        (Ok Map.empty) eqs
 
-let rec resolveType (tp: CheckerType): Types.AType =
+let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =
     match tp with
         | Primitive Int -> Types.Primitive Types.Int
         | Primitive Float -> Types.Primitive Types.Float
@@ -365,9 +326,11 @@ let rec resolveType (tp: CheckerType): Types.AType =
         | Primitive String -> Types.Primitive Types.String
         | Primitive Bool -> Types.Primitive Types.Bool
         | QVar v -> Types.QVar v
-        | Var ({ contents = Unbound (x, _)}) -> Types.Var x
-        | Var ({ contents = Link t}) -> resolveType t
+        | Var s ->
+            match Map.tryFind s subst with
+                | Some t -> resolveType subst t
+                | None -> Types.Var s
         | Func (it, ot) ->
-            Types.Func (resolveType it, resolveType ot)
+            Types.Func (resolveType subst it, resolveType subst ot)
         | Parameterized (name, parameters) ->
-            Types.Parameterized (name, List.map resolveType parameters)
+            Types.Parameterized (name, List.map (resolveType subst) parameters)
