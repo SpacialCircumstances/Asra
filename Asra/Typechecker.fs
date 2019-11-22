@@ -48,6 +48,7 @@ with
 type TypeData<'oldData> = {
     nodeInformation: 'oldData
     nodeType: CheckerType
+    level: int
 }
 with
     override self.ToString () = sprintf "{ type = %A @%A }" self.nodeType self.nodeInformation
@@ -142,6 +143,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                 Variable (name, {
                     nodeInformation = data
                     nodeType = resolveSymbol context name
+                    level = level
                     }) |> Ok
             | Variable (name, data) ->
                 Error (sprintf "Error: Variable %s not defined in %O" name data)
@@ -171,6 +173,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                         Literal (literal, {
                             nodeInformation = data
                             nodeType = litType
+                            level = level
                         }) |> Ok
                     | Error errors -> Error (System.String.Join (", ", errors))
             | If (condExpr, ifExpr, elseExpr, data) ->
@@ -181,6 +184,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                     return If (cond, ifE, elseE, {
                         nodeInformation = data
                         nodeType = newVar level
+                        level = level
                     })
                 }
             | Lambda (decl, expr, data) ->
@@ -198,6 +202,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                         Lambda (newDecl, newExpr, {
                             nodeInformation = data
                             nodeType = newVar level
+                            level = level
                         }) |> Ok
                     | Error e -> Error e
             | Let l ->
@@ -222,6 +227,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                         data = {
                             nodeInformation = l.data
                             nodeType = newVar level
+                            level = level
                         }
                     }
                 }
@@ -234,6 +240,7 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                     let newData = {
                         nodeInformation = data
                         nodeType = newVar level
+                        level = level
                     }
                     return Application (newFuncExpr, newArgExpr, newData)
                 }
