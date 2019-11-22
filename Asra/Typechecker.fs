@@ -9,12 +9,34 @@ type Primitive =
     | String
     | Unit
 
+[<StructuredFormatDisplay("{AsString}")>]
 type CheckerType =
     | Primitive of Primitive
     | Func of CheckerType * CheckerType
     | Var of string
     | QVar of string
     | Parameterized of string * CheckerType list
+with
+    override self.ToString () =
+        let parameterizedToString (name, types: CheckerType list) = sprintf "%s %s" name (System.String.Join(" ", types))
+        match self with
+            | Parameterized (name, types) -> parameterizedToString (name, types)
+            | Primitive str -> str.ToString ()
+            | Var tp -> "'" + tp
+            | QVar q -> sprintf "forall %s. %s" q q
+            | Func (input, output) -> 
+                match input with
+                    | Var tp ->
+                        sprintf "'%s -> %O" tp output
+                    | QVar v ->
+                        sprintf "forall %s. %s -> %O" v v output
+                    | Primitive tp ->
+                        sprintf "%O -> %O" tp output
+                    | Parameterized (name, types) ->
+                        sprintf "(%s) -> %O" (parameterizedToString (name, types)) output
+                    | Func (fti, fto) ->
+                        sprintf "(%O -> %O) -> %O" fti fto output
+    member self.AsString = self.ToString()
 
 [<StructuredFormatDisplay("{AsString}")>]
 type TypeData<'oldData> = {
