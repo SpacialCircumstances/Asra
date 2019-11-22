@@ -16,7 +16,7 @@ type TypeVar =
 with
     override x.ToString () =
         match x with
-            | Unbound (v, _) -> sprintf "'%s" v
+            | Unbound (v, l) -> sprintf "'%s(%i)" v l
             | Link l -> string l
     member self.AsString = self.ToString ()
 
@@ -201,17 +201,19 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
                         }) |> Ok
                     | Error e -> Error e
             | Let l ->
-                let (name, typ, annotated) = match l.binding with
-                                                | AstCommon.Named n -> n, newVar level, None
-                                                | AstCommon.TypeAnnotated (n, tp) -> n, newVar level, Some (toType level tp)
-                let newBinding = {
-                    name = name
-                    declType = typ
-                    annotatedType = annotated
-                }
-                let innerContext = addSymbol context name typ
+                let (name, annotated) = match l.binding with
+                                                | AstCommon.Named n -> n, None
+                                                | AstCommon.TypeAnnotated (n, tp) -> n, Some (toType level tp)
+                
                 Errors.result {
                     let! newValueExpr = assignTypename context (level + 1) l.value
+                    let valueType = getType newValueExpr
+                    let newBinding = {
+                        name = name
+                        declType = valueType
+                        annotatedType = annotated
+                    }
+                    let innerContext = addSymbol context name valueType
                     let! newBodyExpr = assignTypename innerContext level l.body
                     return Let {
                         binding = newBinding
@@ -271,7 +273,6 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                         | None -> ()
                         | Some annotated ->
                             yield eq l.binding.declType annotated
-                yield eq l.binding.declType (getType l.value)
                 yield! generateEquations l.body
                 yield eq l.data.nodeType (getType l.body)
             | LetRec l ->
