@@ -14,7 +14,6 @@ type CheckerType =
     | Primitive of Primitive
     | Func of CheckerType * CheckerType
     | Var of string
-    | QVar of string
     | Parameterized of string * CheckerType list
 with
     override self.ToString () =
@@ -23,13 +22,10 @@ with
             | Parameterized (name, types) -> parameterizedToString (name, types)
             | Primitive str -> str.ToString ()
             | Var tp -> "'" + tp
-            | QVar q -> sprintf "forall %s. %s" q q
             | Func (input, output) -> 
                 match input with
                     | Var tp ->
                         sprintf "'%s -> %O" tp output
-                    | QVar v ->
-                        sprintf "forall %s. %s -> %O" v v output
                     | Primitive tp ->
                         sprintf "%O -> %O" tp output
                     | Parameterized (name, types) ->
@@ -347,7 +343,6 @@ let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =
         | Primitive Unit -> Types.Primitive Types.Unit
         | Primitive String -> Types.Primitive Types.String
         | Primitive Bool -> Types.Primitive Types.Bool
-        | QVar v -> Types.QVar v
         | Var s ->
             match Map.tryFind s subst with
                 | Some t -> resolveType subst t
