@@ -90,13 +90,14 @@ type Context<'data> = {
 }
 
 let createContext () =
-    let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
-        let counter = ref 0
-        let next () = 
-            let tn = sprintf "t%i" !counter
-            incr counter
-            tn
-    
+    let counter = ref 0
+
+    let next () = 
+        let tn = sprintf "t%i" !counter
+        incr counter
+        tn
+
+    let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =    
         let rec toType (td: AstCommon.TypeDeclaration) =
             match td with
                 | AstCommon.Name "Int" -> Primitive Int
