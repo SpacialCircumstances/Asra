@@ -54,12 +54,28 @@ with
     override self.ToString () = sprintf "(%s: %A)" self.name self.declType
     member self.AsString = self.ToString ()
 
-[<StructuredFormatDisplay("{left} = {right}")>]
+type EquationKind =
+    | Eq
+    | Inst
+    | Gen
+with
+    override self.ToString () =
+        match self with
+            | Eq -> "="
+            | Inst -> "=inst"
+            | Gen -> "=gen"
+
+[<StructuredFormatDisplay("{AsString}")>]
 type TypeEquation<'data> = {
     origin: Expression<TypeData<'data>, Declaration>
     left: CheckerType
     right: CheckerType
+    kind: EquationKind
 }
+with 
+    override self.ToString () =
+        sprintf "%A %A %A" self.left self.kind self.right
+    member self.AsString = self.ToString ()
 
 type SymbolTable = Map<string, CheckerType>
 
@@ -218,50 +234,51 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
 let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
 
 let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
-    let eq l r = {
+    let eq l r k = {
         left = l
         right = r
         origin = expr
+        kind = k
     }
     seq {
         match expr with
             | Application (funcExpr, argExpr, data) ->
                 yield! generateEquations funcExpr
                 yield! generateEquations argExpr
-                yield eq (getType funcExpr) (Func (getType argExpr, data.nodeType))
+                yield eq (getType funcExpr) (Func (getType argExpr, data.nodeType)) Eq
             | If (condExpr, ifExpr, elseExpr, data) ->
                 yield! generateEquations condExpr
                 yield! generateEquations ifExpr
                 yield! generateEquations elseExpr
-                yield eq (getType ifExpr) (Primitive Bool)
-                yield eq data.nodeType (getType ifExpr)
-                yield eq data.nodeType (getType elseExpr)
+                yield eq (getType ifExpr) (Primitive Bool) Eq
+                yield eq data.nodeType (getType ifExpr) Eq
+                yield eq data.nodeType (getType elseExpr) Eq
             | Variable _ -> ()
             | Lambda (decl, expr, data) ->
                 yield! generateEquations expr
                 match decl.annotatedType with
                         | None -> ()
                         | Some annotated ->
-                            yield eq decl.declType annotated
-                yield eq data.nodeType (Func (decl.declType, getType expr))
+                            yield eq decl.declType annotated Eq
+                yield eq data.nodeType (Func (decl.declType, getType expr)) Eq
             | Let l ->
                 yield! generateEquations l.value
                 match l.binding.annotatedType with
                         | None -> ()
                         | Some annotated ->
-                            yield eq l.binding.declType annotated
-                yield eq l.binding.declType (getType l.value)
+                            yield eq l.binding.declType annotated Eq
+                yield eq l.binding.declType (getType l.value) Eq
                 yield! generateEquations l.body
-                yield eq l.data.nodeType (getType l.body)
+                yield eq l.data.nodeType (getType l.body) Eq
             | LetRec l ->
                 yield! generateEquations l.value
                 match l.binding.annotatedType with
                         | None -> ()
                         | Some annotated ->
-                            yield eq l.binding.declType annotated
-                yield eq l.binding.declType (getType l.value)
+                            yield eq l.binding.declType annotated Eq
+                yield eq l.binding.declType (getType l.value) Eq
                 yield! generateEquations l.body
-                yield eq l.data.nodeType (getType l.body)
+                yield eq l.data.nodeType (getType l.body) Eq
             | Literal (lit, data) ->
                 match lit with
                     | AstCommon.Literal.List exprs ->
@@ -269,7 +286,7 @@ let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
                             | Parameterized ("List", [elType]) ->
                                 for expr in exprs do
                                     yield! generateEquations expr
-                                    yield eq elType (getType expr)
+                                    yield eq elType (getType expr) Eq
                             | _ -> invalidOp "Expected parameterized list type for list literal"
                         ()
                     | _ -> ()
