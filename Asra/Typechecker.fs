@@ -346,11 +346,22 @@ let createContext () =
                          Error (sprintf "Cannot unify type %A with %A" left right)
                 | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
     
+    let inst tp = tp
+
+    let generalize tp = tp
+
+    let handleType (r: CheckerType) (kind: EquationKind) =
+        match kind with
+            | Eq -> r
+            | Inst -> inst r
+            | Gen -> generalize r
+
     let unifyAll (eqs: TypeEquation<'data> seq) =
         Seq.fold (fun st eq -> 
             st 
             |> Result.bind (fun subst -> 
-                unify subst eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
+                let right = handleType eq.right eq.kind
+                unify subst eq.left right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
             (Ok Map.empty) eqs
     
     let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =
