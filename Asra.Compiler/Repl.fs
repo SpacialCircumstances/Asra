@@ -27,13 +27,14 @@ let runCode (args: Arguments) (code: string) =
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
-        let! typedIR = Typechecker.generateTypenames Prelude.context ir
+        let tc = Typechecker.createContext ()
+        let! typedIR = tc.generateTypenames Prelude.context ir
         do args.formatTypedIR typedIR
-        let eqs = Typechecker.generateEquations typedIR
+        let eqs = tc.generateEquations typedIR
         do args.formatEquations eqs
-        let! subst = Typechecker.unifyAll eqs
+        let! subst = tc.solveEquations eqs
         do args.formatSubstitutions subst
-        return (Typechecker.getType typedIR |> Typechecker.resolveType subst)
+        return (tc.getType typedIR |> tc.resolveType subst)
     }
 
     match replResult with

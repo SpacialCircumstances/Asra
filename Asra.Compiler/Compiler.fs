@@ -17,13 +17,14 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
-        let! typedIR = Typechecker.generateTypenames Prelude.context ir
+        let tc = Typechecker.createContext ()
+        let! typedIR = tc.generateTypenames Prelude.context ir
         do args.formatTypedIR typedIR
-        let eqs = Typechecker.generateEquations typedIR
+        let eqs = tc.generateEquations typedIR
         do args.formatEquations eqs
-        let! subst = Typechecker.unifyAll eqs
+        let! subst = tc.solveEquations eqs
         do args.formatSubstitutions subst
-        let programType = (Typechecker.getType typedIR |> Typechecker.resolveType subst)
+        let programType = (tc.getType typedIR |> tc.resolveType subst)
         do args.log (sprintf "Program type: %A" programType)
         return "Compilation finished"
     }
