@@ -61,9 +61,7 @@ type TypeEquation<'data> = {
     right: CheckerType
 }
 
-type SymbolTable = 
-    | Empty
-    | Data of string * CheckerType * SymbolTable
+type SymbolTable = Map<string, CheckerType>
 
 type Substitutions = Map<string, CheckerType>
 
@@ -87,31 +85,22 @@ let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir
             | AstCommon.Parameterized (name, parameters) ->
                 Parameterized (name, List.map toType parameters)
 
-    let rec containsSymbol (context: SymbolTable) (name: string) = 
-        match context with
-            | Empty -> false
-            | Data (n, _, _) when n = name -> true
-            | Data (_, _, p) -> containsSymbol p name
+    let rec resolveSymbol (context: SymbolTable) (name: string) = Map.tryFind name context
 
-    let rec resolveSymbol (context: SymbolTable) (name: string) = 
-        match context with
-            | Empty -> invalidOp (sprintf "Error resolving symbol %s" name)
-            | Data (n, tp, _) when n = name -> tp
-            | Data (_, _, p) -> resolveSymbol p name
+    let addSymbol (context: SymbolTable) (name: string) (typ: CheckerType) = Map.add name typ context
 
-    let addSymbol (context: SymbolTable) (name: string) (typ: CheckerType) = Data (name, typ, context)
-
-    let initialContext = Map.fold (fun c k t -> addSymbol c k (toType t)) Empty initialTypes
+    let initialContext = Map.fold (fun c k t -> addSymbol c k (toType t)) Map.empty initialTypes
 
     let rec assignTypename (context: SymbolTable) (expr: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =
         match expr with
-            | Variable (name, data) when containsSymbol context name ->
-                Variable (name, {
-                    nodeInformation = data
-                    nodeType = resolveSymbol context name
-                    }) |> Ok
             | Variable (name, data) ->
-                Error (sprintf "Error: Variable %s not defined in %O" name data)
+                match resolveSymbol context name with
+                    | Some typ ->
+                        Variable (name, {
+                            nodeInformation = data
+                            nodeType = typ
+                            }) |> Ok
+                    | None -> Error (sprintf "Error: Variable %s not defined in %O" name data)
             | Literal (lit, data) ->
                 let newLit = 
                     match lit with
