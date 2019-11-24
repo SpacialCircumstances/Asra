@@ -14,6 +14,7 @@ type CheckerType =
     | Primitive of Primitive
     | Func of CheckerType * CheckerType
     | Var of string
+    | Scheme of Set<string> * CheckerType
     | Parameterized of string * CheckerType list
 with
     override self.ToString () =
@@ -22,16 +23,16 @@ with
             | Parameterized (name, types) -> parameterizedToString (name, types)
             | Primitive str -> str.ToString ()
             | Var tp -> "'" + tp
+            | Scheme (gs, tp) -> sprintf "forall %s. %A" (System.String.Join(". ", gs)) tp
             | Func (input, output) -> 
                 match input with
                     | Var tp ->
                         sprintf "'%s -> %O" tp output
-                    | Primitive tp ->
-                        sprintf "%O -> %O" tp output
                     | Parameterized (name, types) ->
                         sprintf "(%s) -> %O" (parameterizedToString (name, types)) output
                     | Func (fti, fto) ->
                         sprintf "(%O -> %O) -> %O" fti fto output
+                    | _ -> sprintf "%O -> %O" input output
     member self.AsString = self.ToString()
 
 [<StructuredFormatDisplay("{AsString}")>]
@@ -343,6 +344,7 @@ let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =
         | Primitive Unit -> Types.Primitive Types.Unit
         | Primitive String -> Types.Primitive Types.String
         | Primitive Bool -> Types.Primitive Types.Bool
+        | Scheme (gs, t) -> Types.Scheme (gs, resolveType subst t)
         | Var s ->
             match Map.tryFind s subst with
                 | Some t -> resolveType subst t
