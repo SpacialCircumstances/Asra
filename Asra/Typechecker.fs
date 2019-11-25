@@ -36,18 +36,6 @@ with
     member self.AsString = self.ToString()
 
 [<StructuredFormatDisplay("{AsString}")>]
-type TypeInstance =
-    | Norm of CheckerType
-    | Inst of CheckerType
-    | Gen of CheckerType
-with
-    override self.ToString () =
-        match self with
-            | Norm t ->  t.ToString ()
-            | Inst t -> sprintf "Inst(%O)" t
-            | Gen t -> sprintf "Gen(%O)" t
-
-[<StructuredFormatDisplay("{AsString}")>]
 type TypeData<'oldData> = {
     nodeInformation: 'oldData
     nodeType: CheckerType
@@ -69,8 +57,8 @@ with
 [<StructuredFormatDisplay("{AsString}")>]
 type TypeEquation<'data> = {
     origin: Expression<TypeData<'data>, Declaration>
-    left: TypeInstance
-    right: TypeInstance
+    left: CheckerType
+    right: CheckerType
 }
 with 
     override self.ToString () =
@@ -244,8 +232,8 @@ let createContext () =
     
     let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
         let eq l r = {
-            left = Norm l
-            right = Norm r
+            left = l
+            right = r
             origin = expr
         }
         seq {
@@ -344,20 +332,11 @@ let createContext () =
                          Error (sprintf "Cannot unify type %A with %A" left right)
                 | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
     
-    let inst tp = tp
-
-    let gen tp = tp
-
-    let unwrapType t = match t with
-                        | Norm tp -> tp
-                        | Inst tp -> inst tp
-                        | Gen tp -> gen tp
-
     let unifyAll (eqs: TypeEquation<'data> seq) =
         Seq.fold (fun st eq -> 
             st 
             |> Result.bind (fun subst -> 
-                unify subst (unwrapType eq.left) (unwrapType eq.right) |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
+                unify subst eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
             (Ok Map.empty) eqs
     
     let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =
