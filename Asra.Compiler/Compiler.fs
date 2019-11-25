@@ -24,7 +24,7 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.formatEquations eqs
         let! subst = tc.solveEquations eqs
         do args.formatSubstitutions subst
-        let programType = (tc.getType typedIR |> tc.resolveType subst)
+        let programType = (tc.getExprType typedIR subst)
         do args.log (sprintf "Program type: %A" programType)
         return "Compilation finished"
     }

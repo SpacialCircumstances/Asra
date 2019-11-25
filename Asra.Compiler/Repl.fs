@@ -34,7 +34,7 @@ let runCode (args: Arguments) (code: string) =
         do args.formatEquations eqs
         let! subst = tc.solveEquations eqs
         do args.formatSubstitutions subst
-        return (tc.getType typedIR |> tc.resolveType subst)
+        return (tc.getExprType typedIR subst)
     }
 
     match replResult with

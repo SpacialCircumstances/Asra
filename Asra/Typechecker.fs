@@ -83,9 +83,8 @@ type Substitutions = Map<string, CheckerType>
 
 type Context<'data> = {
     generateTypenames: Map<string, AstCommon.TypeDeclaration> -> Expression<'data, AstCommon.Declaration> -> Result<Expression<TypeData<'data>, Declaration>, string>
-    getType: Expression<TypeData<'data>, Declaration> -> CheckerType
+    getExprType: Expression<TypeData<'data>, Declaration> -> Substitutions -> Types.AType
     generateEquations: Expression<TypeData<'data>, Declaration> -> TypeEquation<'data> seq
-    resolveType: Substitutions -> CheckerType -> Types.AType
     solveEquations: TypeEquation<'data> seq -> Result<Substitutions, string>
 }
 
@@ -381,7 +380,6 @@ let createContext () =
     {
         generateEquations = generateEquations
         generateTypenames = generateTypenames
-        getType = getType
-        resolveType = resolveType
         solveEquations = unifyAll
+        getExprType = fun expr subst -> getType expr |> resolveType subst
     }
