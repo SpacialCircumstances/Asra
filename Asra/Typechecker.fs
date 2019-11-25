@@ -36,6 +36,18 @@ with
     member self.AsString = self.ToString()
 
 [<StructuredFormatDisplay("{AsString}")>]
+type TypeInstance =
+    | Norm of CheckerType
+    | Inst of CheckerType
+    | Gen of CheckerType
+with
+    override self.ToString () =
+        match self with
+            | Norm t ->  t.ToString ()
+            | Inst t -> sprintf "Inst(%O)" t
+            | Gen t -> sprintf "Gen(%O)" t
+
+[<StructuredFormatDisplay("{AsString}")>]
 type TypeData<'oldData> = {
     nodeInformation: 'oldData
     nodeType: CheckerType
@@ -54,27 +66,15 @@ with
     override self.ToString () = sprintf "(%s: %A)" self.name self.declType
     member self.AsString = self.ToString ()
 
-type EquationKind =
-    | Eq
-    | Inst
-    | Gen
-with
-    override self.ToString () =
-        match self with
-            | Eq -> "="
-            | Inst -> "=inst"
-            | Gen -> "=gen"
-
 [<StructuredFormatDisplay("{AsString}")>]
 type TypeEquation<'data> = {
     origin: Expression<TypeData<'data>, Declaration>
-    left: CheckerType
-    right: CheckerType
-    kind: EquationKind
+    left: TypeInstance
+    right: TypeInstance
 }
 with 
     override self.ToString () =
-        sprintf "%A %A %A" self.left self.kind self.right
+        sprintf "%A = %A" self.left self.right
     member self.AsString = self.ToString ()
 
 type SymbolTable = Map<string, CheckerType>
@@ -244,51 +244,50 @@ let createContext () =
     let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
     
     let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
-        let eq l r k = {
-            left = l
-            right = r
+        let eq l r = {
+            left = Norm l
+            right = Norm r
             origin = expr
-            kind = k
         }
         seq {
             match expr with
                 | Application (funcExpr, argExpr, data) ->
                     yield! generateEquations funcExpr
                     yield! generateEquations argExpr
-                    yield eq (getType funcExpr) (Func (getType argExpr, data.nodeType)) Eq
+                    yield eq (getType funcExpr) (Func (getType argExpr, data.nodeType))
                 | If (condExpr, ifExpr, elseExpr, data) ->
                     yield! generateEquations condExpr
                     yield! generateEquations ifExpr
                     yield! generateEquations elseExpr
-                    yield eq (getType ifExpr) (Primitive Bool) Eq
-                    yield eq data.nodeType (getType ifExpr) Eq
-                    yield eq data.nodeType (getType elseExpr) Eq
+                    yield eq (getType ifExpr) (Primitive Bool)
+                    yield eq data.nodeType (getType ifExpr)
+                    yield eq data.nodeType (getType elseExpr)
                 | Variable _ -> ()
                 | Lambda (decl, expr, data) ->
                     yield! generateEquations expr
                     match decl.annotatedType with
                             | None -> ()
                             | Some annotated ->
-                                yield eq decl.declType annotated Eq
-                    yield eq data.nodeType (Func (decl.declType, getType expr)) Eq
+                                yield eq decl.declType annotated
+                    yield eq data.nodeType (Func (decl.declType, getType expr))
                 | Let l ->
                     yield! generateEquations l.value
                     match l.binding.annotatedType with
                             | None -> ()
                             | Some annotated ->
-                                yield eq l.binding.declType annotated Eq
-                    yield eq l.binding.declType (getType l.value) Eq
+                                yield eq l.binding.declType annotated
+                    yield eq l.binding.declType (getType l.value)
                     yield! generateEquations l.body
-                    yield eq l.data.nodeType (getType l.body) Eq
+                    yield eq l.data.nodeType (getType l.body)
                 | LetRec l ->
                     yield! generateEquations l.value
                     match l.binding.annotatedType with
                             | None -> ()
                             | Some annotated ->
-                                yield eq l.binding.declType annotated Eq
-                    yield eq l.binding.declType (getType l.value) Eq
+                                yield eq l.binding.declType annotated
+                    yield eq l.binding.declType (getType l.value)
                     yield! generateEquations l.body
-                    yield eq l.data.nodeType (getType l.body) Eq
+                    yield eq l.data.nodeType (getType l.body)
                 | Literal (lit, data) ->
                     match lit with
                         | AstCommon.Literal.List exprs ->
@@ -296,7 +295,7 @@ let createContext () =
                                 | Parameterized ("List", [elType]) ->
                                     for expr in exprs do
                                         yield! generateEquations expr
-                                        yield eq elType (getType expr) Eq
+                                        yield eq elType (getType expr)
                                 | _ -> invalidOp "Expected parameterized list type for list literal"
                             ()
                         | _ -> ()
@@ -348,20 +347,18 @@ let createContext () =
     
     let inst tp = tp
 
-    let generalize tp = tp
+    let gen tp = tp
 
-    let handleType (r: CheckerType) (kind: EquationKind) =
-        match kind with
-            | Eq -> r
-            | Inst -> inst r
-            | Gen -> generalize r
+    let unwrapType t = match t with
+                        | Norm tp -> tp
+                        | Inst tp -> inst tp
+                        | Gen tp -> gen tp
 
     let unifyAll (eqs: TypeEquation<'data> seq) =
         Seq.fold (fun st eq -> 
             st 
             |> Result.bind (fun subst -> 
-                let right = handleType eq.right eq.kind
-                unify subst eq.left right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
+                unify subst (unwrapType eq.left) (unwrapType eq.right) |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
             (Ok Map.empty) eqs
     
     let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =
