@@ -223,9 +223,14 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                         yield eq (getType ifExpr) (Primitive Bool)
                         yield eq data.nodeType (getType ifExpr)
                         yield eq data.nodeType (getType elseExpr)
-                    | Variable _ -> ()
+                    | Variable (name, data) ->
+                        let varType = match resolveSymbol context name with
+                                        | Some tp -> tp
+                                        | None -> invalidOp (sprintf "Value %s not defined here" name)
+                        yield eq data.nodeType varType
                     | Lambda (decl, expr, data) ->
-                        yield! genEq context expr
+                        let newContext = addSymbol context decl.name decl.declType
+                        yield! genEq newContext expr
                         match decl.annotatedType with
                                 | None -> ()
                                 | Some annotated ->
@@ -238,16 +243,19 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                                 | Some annotated ->
                                     yield eq l.binding.declType annotated
                         yield eq l.binding.declType (getType l.value)
-                        yield! genEq context l.body
+                        let newContext = addSymbol context l.binding.name l.binding.declType
+                        yield! genEq newContext l.body
                         yield eq l.data.nodeType (getType l.body)
                     | LetRec l ->
-                        yield! genEq context l.value
+                        let innerContext = addSymbol context l.binding.name l.binding.declType
+                        yield! genEq innerContext l.value
                         match l.binding.annotatedType with
                                 | None -> ()
                                 | Some annotated ->
                                     yield eq l.binding.declType annotated
                         yield eq l.binding.declType (getType l.value)
-                        yield! genEq context l.body
+                        let newContext = addSymbol context l.binding.name l.binding.declType
+                        yield! genEq newContext l.body
                         yield eq l.data.nodeType (getType l.body)
                     | Literal (lit, data) ->
                         match lit with
