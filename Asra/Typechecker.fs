@@ -202,63 +202,67 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
     let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
     
-    let rec generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
+    let generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
         let eq l r = {
             left = l
             right = r
             origin = expr
         }
-        seq {
-            match expr with
-                | Application (funcExpr, argExpr, data) ->
-                    yield! generateEquations funcExpr
-                    yield! generateEquations argExpr
-                    yield eq (getType funcExpr) (Func (getType argExpr, data.nodeType))
-                | If (condExpr, ifExpr, elseExpr, data) ->
-                    yield! generateEquations condExpr
-                    yield! generateEquations ifExpr
-                    yield! generateEquations elseExpr
-                    yield eq (getType ifExpr) (Primitive Bool)
-                    yield eq data.nodeType (getType ifExpr)
-                    yield eq data.nodeType (getType elseExpr)
-                | Variable _ -> ()
-                | Lambda (decl, expr, data) ->
-                    yield! generateEquations expr
-                    match decl.annotatedType with
-                            | None -> ()
-                            | Some annotated ->
-                                yield eq decl.declType annotated
-                    yield eq data.nodeType (Func (decl.declType, getType expr))
-                | Let l ->
-                    yield! generateEquations l.value
-                    match l.binding.annotatedType with
-                            | None -> ()
-                            | Some annotated ->
-                                yield eq l.binding.declType annotated
-                    yield eq l.binding.declType (getType l.value)
-                    yield! generateEquations l.body
-                    yield eq l.data.nodeType (getType l.body)
-                | LetRec l ->
-                    yield! generateEquations l.value
-                    match l.binding.annotatedType with
-                            | None -> ()
-                            | Some annotated ->
-                                yield eq l.binding.declType annotated
-                    yield eq l.binding.declType (getType l.value)
-                    yield! generateEquations l.body
-                    yield eq l.data.nodeType (getType l.body)
-                | Literal (lit, data) ->
-                    match lit with
-                        | AstCommon.Literal.List exprs ->
-                            match data.nodeType with
-                                | Parameterized ("List", [elType]) ->
-                                    for expr in exprs do
-                                        yield! generateEquations expr
-                                        yield eq elType (getType expr)
-                                | _ -> invalidOp "Expected parameterized list type for list literal"
-                            ()
-                        | _ -> ()
-        }
+
+        let rec genEq (context: SymbolTable) (expr: Expression<TypeData<'data>, Declaration>) =
+            seq {
+                match expr with
+                    | Application (funcExpr, argExpr, data) ->
+                        yield! genEq context funcExpr
+                        yield! genEq context argExpr
+                        yield eq (getType funcExpr) (Func (getType argExpr, data.nodeType))
+                    | If (condExpr, ifExpr, elseExpr, data) ->
+                        yield! genEq context condExpr
+                        yield! genEq context ifExpr
+                        yield! genEq context elseExpr
+                        yield eq (getType ifExpr) (Primitive Bool)
+                        yield eq data.nodeType (getType ifExpr)
+                        yield eq data.nodeType (getType elseExpr)
+                    | Variable _ -> ()
+                    | Lambda (decl, expr, data) ->
+                        yield! genEq context expr
+                        match decl.annotatedType with
+                                | None -> ()
+                                | Some annotated ->
+                                    yield eq decl.declType annotated
+                        yield eq data.nodeType (Func (decl.declType, getType expr))
+                    | Let l ->
+                        yield! genEq context l.value
+                        match l.binding.annotatedType with
+                                | None -> ()
+                                | Some annotated ->
+                                    yield eq l.binding.declType annotated
+                        yield eq l.binding.declType (getType l.value)
+                        yield! genEq context l.body
+                        yield eq l.data.nodeType (getType l.body)
+                    | LetRec l ->
+                        yield! genEq context l.value
+                        match l.binding.annotatedType with
+                                | None -> ()
+                                | Some annotated ->
+                                    yield eq l.binding.declType annotated
+                        yield eq l.binding.declType (getType l.value)
+                        yield! genEq context l.body
+                        yield eq l.data.nodeType (getType l.body)
+                    | Literal (lit, data) ->
+                        match lit with
+                            | AstCommon.Literal.List exprs ->
+                                match data.nodeType with
+                                    | Parameterized ("List", [elType]) ->
+                                        for expr in exprs do
+                                            yield! genEq context expr
+                                            yield eq elType (getType expr)
+                                    | _ -> invalidOp "Expected parameterized list type for list literal"
+                                ()
+                            | _ -> ()
+            }
+
+        genEq initialContext expr
     
     let rec occursCheck (subst: Substitutions) (a: CheckerType) (b: CheckerType) =
         if a = b then
