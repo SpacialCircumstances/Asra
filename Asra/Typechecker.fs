@@ -70,7 +70,7 @@ type SymbolTable = Map<string, CheckerType>
 type Substitutions = Map<string, CheckerType>
 
 type Context<'data> = {
-    generateTypenames: Expression<'data, AstCommon.Declaration> -> Result<Expression<TypeData<'data>, Declaration>, string>
+    generateTypenames: Expression<'data, AstCommon.Declaration> ->Expression<TypeData<'data>, Declaration>
     getExprType: Expression<TypeData<'data>, Declaration> -> Substitutions -> Types.AType
     generateEquations: Expression<TypeData<'data>, Declaration> -> TypeEquation<'data> seq
     solveEquations: TypeEquation<'data> seq -> Result<Substitutions, string>
