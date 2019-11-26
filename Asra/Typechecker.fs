@@ -70,13 +70,13 @@ type SymbolTable = Map<string, CheckerType>
 type Substitutions = Map<string, CheckerType>
 
 type Context<'data> = {
-    generateTypenames: Map<string, AstCommon.TypeDeclaration> -> Expression<'data, AstCommon.Declaration> -> Result<Expression<TypeData<'data>, Declaration>, string>
+    generateTypenames: Expression<'data, AstCommon.Declaration> -> Result<Expression<TypeData<'data>, Declaration>, string>
     getExprType: Expression<TypeData<'data>, Declaration> -> Substitutions -> Types.AType
     generateEquations: Expression<TypeData<'data>, Declaration> -> TypeEquation<'data> seq
     solveEquations: TypeEquation<'data> seq -> Result<Substitutions, string>
 }
 
-let createContext () =
+let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     let counter = ref 0
 
     let next () = 
@@ -84,7 +84,7 @@ let createContext () =
         incr counter
         tn
 
-    let generateTypenames (initialTypes: Map<string, AstCommon.TypeDeclaration>) (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =    
+    let generateTypenames (ir: Expression<'oldData, AstCommon.Declaration>): Result<Expression<TypeData<'oldData>, Declaration>, string> =    
         let rec toType (td: AstCommon.TypeDeclaration) =
             match td with
                 | AstCommon.Name "Int" -> Primitive Int

@@ -17,8 +17,8 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
-        let tc = Typechecker.createContext ()
-        let! typedIR = tc.generateTypenames Prelude.context ir
+        let tc = Typechecker.createContext Prelude.context
+        let! typedIR = tc.generateTypenames ir
         do args.formatTypedIR typedIR
         let eqs = tc.generateEquations typedIR
         do args.formatEquations eqs
