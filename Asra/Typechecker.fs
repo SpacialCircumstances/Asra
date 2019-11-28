@@ -72,8 +72,8 @@ type Substitutions = Map<string, CheckerType>
 type Context<'data> = {
     generateTypenames: Expression<'data, AstCommon.Declaration> ->Expression<TypeData<'data>, Declaration>
     getExprType: Expression<TypeData<'data>, Declaration> -> Substitutions -> Types.AType
-    generateEquations: Expression<TypeData<'data>, Declaration> -> TypeEquation<'data> seq
-    solveEquations: TypeEquation<'data> seq -> Result<Substitutions, string>
+    generateEquations: Expression<TypeData<'data>, Declaration> -> Result<TypeEquation<'data>, string> seq
+    solveEquations: Result<TypeEquation<'data>, string> seq -> Result<Substitutions, string>
 }
 
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
@@ -203,7 +203,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     let getType (expr: Expression<TypeData<'data>, 'decl>) = (getData expr).nodeType
     
     let generateEquations (expr: Expression<TypeData<'data>, Declaration>) =
-        let eq l r = {
+        let eq l r = Ok {
             left = l
             right = r
             origin = expr
@@ -224,10 +224,11 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                         yield eq data.nodeType (getType ifExpr)
                         yield eq data.nodeType (getType elseExpr)
                     | Variable (name, data) ->
-                        let varType = match resolveSymbol context name with
-                                        | Some tp -> tp
-                                        | None -> invalidOp (sprintf "Value %s not defined here" name)
-                        yield eq data.nodeType varType
+                        match resolveSymbol context name with
+                                        | Some varType -> 
+                                            yield eq data.nodeType varType
+                                        | None -> 
+                                            yield (Error (sprintf "Value %s not defined here" name))
                     | Lambda (decl, expr, data) ->
                         let newContext = addSymbol context decl.name decl.declType
                         yield! genEq newContext expr
@@ -316,11 +317,13 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                          Error (sprintf "Cannot unify type %A with %A" left right)
                 | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
     
-    let unifyAll (eqs: TypeEquation<'data> seq) =
+    let unifyAll (eqs: Result<TypeEquation<'data>, string> seq) =
         Seq.fold (fun st eq -> 
-            st 
-            |> Result.bind (fun subst -> 
-                unify subst eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)))
+            match st, eq with
+                | Ok subst, Ok eq -> unify subst eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)
+                | Error e1, Error e2 -> Error (e1 + e2)
+                | Error e, _
+                | _, Error e -> Error e)
             (Ok Map.empty) eqs
     
     let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =

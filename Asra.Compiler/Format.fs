@@ -24,9 +24,13 @@ let formatIR: Formatter<IR.Expression<AstCommon.SourcePosition, AstCommon.Declar
 let formatTypedIR: Formatter<IR.Expression<Typechecker.TypeData<AstCommon.SourcePosition>, Typechecker.Declaration>> =
     withHeader "Typed IR" (fun fmt tir -> fmt "%A" tir)
 
-let formatEquations: Formatter<Typechecker.TypeEquation<AstCommon.SourcePosition> seq> =
+let formatEquations: Formatter<Result<Typechecker.TypeEquation<AstCommon.SourcePosition>, string> seq> =
     withHeader "Type equations" (fun fmt eqs -> 
-        Seq.iter (fun eq -> fmt "%A" eq) eqs)
+        Seq.iter (fun eq -> 
+            let strEq = match eq with
+                        | Ok e -> sprintf "%A" e
+                        | Error e -> sprintf "Error: %s" e
+            fmt "%s" strEq) eqs)
 
 let formatSubstitutions: Formatter<Typechecker.Substitutions> = 
     withHeader "Type substitutions" (fun fmt subst -> 
