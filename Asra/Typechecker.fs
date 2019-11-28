@@ -228,7 +228,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                                         | Some varType -> 
                                             yield eq data.nodeType varType
                                         | None -> 
-                                            yield (Error (sprintf "Value %s not defined here" name))
+                                            yield (Error (sprintf "Value %s not defined in %A" name data.nodeInformation))
                     | Lambda (decl, expr, data) ->
                         let newContext = addSymbol context decl.name decl.declType
                         yield! genEq newContext expr
