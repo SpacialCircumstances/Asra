@@ -216,14 +216,14 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             kind = Eq
         }
 
-        let instEq l r = Ok {
+        let eqInst l r = Ok {
             left = l
             right = r
             origin = expr
             kind = Inst
         }
 
-        let genEq l r = Ok {
+        let eqGen l r = Ok {
             left = l
             right = r
             origin = expr
@@ -247,7 +247,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                     | Variable (name, data) ->
                         match resolveSymbol context name with
                                         | Some varType -> 
-                                            yield instEq data.nodeType varType
+                                            yield eqInst data.nodeType varType
                                         | None -> 
                                             yield (Error (sprintf "Value %s not defined in %A" name data.nodeInformation))
                     | Lambda (decl, expr, data) ->
@@ -264,7 +264,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                                 | None -> ()
                                 | Some annotated ->
                                     yield eq l.binding.declType annotated
-                        yield eq l.binding.declType (getType l.value)
+                        yield eqGen l.binding.declType (getType l.value)
                         let newContext = addSymbol context l.binding.name l.binding.declType
                         yield! genEq newContext l.body
                         yield eq l.data.nodeType (getType l.body)
@@ -275,7 +275,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                                 | None -> ()
                                 | Some annotated ->
                                     yield eq l.binding.declType annotated
-                        yield eq l.binding.declType (getType l.value)
+                        yield eqGen l.binding.declType (getType l.value)
                         let newContext = addSymbol context l.binding.name l.binding.declType
                         yield! genEq newContext l.body
                         yield eq l.data.nodeType (getType l.body)
