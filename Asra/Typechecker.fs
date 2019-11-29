@@ -68,7 +68,11 @@ type TypeEquation<'data> = {
 }
 with 
     override self.ToString () =
-        sprintf "%A = %A" self.left self.right
+        let q = match self.kind with
+                | Eq -> ""
+                | Inst -> "inst"
+                | Gen -> "gen"
+        sprintf "%A = %s %A" self.left q self.right
     member self.AsString = self.ToString ()
 
 type SymbolTable = Map<string, CheckerType>
