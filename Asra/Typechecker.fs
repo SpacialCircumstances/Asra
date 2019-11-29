@@ -342,7 +342,26 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                          Error (sprintf "Cannot unify type %A with %A" left right)
                 | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
     
-    let inst (tp: CheckerType) = tp
+    let rec inst (tp: CheckerType) = 
+        let rec replace subst t =
+            match t with
+                | Var n -> 
+                    match Map.tryFind n subst with
+                        | None -> Var n
+                        | Some x -> x
+                | Func (f1, f2) -> Func (replace subst f1, replace subst f2)
+                | Parameterized (name, tps) -> Parameterized (name, List.map (replace subst) tps)
+                | _ -> t
+
+        match tp with
+            | Scheme (free, tp) ->
+                let subst = free
+                            |> Seq.map (fun x -> x, next ())
+                            |> Map.ofSeq
+                replace subst tp
+            | Func (f1, f2) -> Func (inst f1, inst f2)
+            | Parameterized (n, tps) -> Parameterized (n, List.map inst tps)
+            | _ -> tp
 
     let gen (tp: CheckerType) = tp
 
