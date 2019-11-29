@@ -363,19 +363,32 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             | Parameterized (n, tps) -> Parameterized (n, List.map inst tps)
             | _ -> tp
 
-    let gen (tp: CheckerType) = tp
+    let rec gen (subst: Substitutions) (tp: CheckerType) = 
+        //TODO: Make this sound
+        let rec collect t free =
+            match t with
+            | Var n ->
+                match Map.tryFind n subst with
+                    | None -> Set.add n free
+                    | Some x -> Set.union (collect x free) free
+            | Func (f1, f2) -> Set.union (collect f1 free) (collect f2 free)
+            | Parameterized (_, tps) -> Set.unionMany (List.map (fun t -> collect t free) tps)
+            | _ -> free
 
-    let quantifyEquation (eq: TypeEquation<'data>) =
+        let frees = collect tp Set.empty
+        Scheme (frees, tp)
+
+    let quantifyEquation (eq: TypeEquation<'data>) (subst: Substitutions) =
         match eq.kind with
             | Eq -> eq.left, eq.right
             | Inst -> eq.left, inst eq.right
-            | Gen -> eq.left, gen eq.right
+            | Gen -> eq.left, gen subst eq.right
 
     let unifyAll (eqs: Result<TypeEquation<'data>, string> seq) =
         Seq.fold (fun st eq -> 
             match st, eq with
                 | Ok subst, Ok eq -> 
-                    let (left, right) = quantifyEquation eq
+                    let (left, right) = quantifyEquation eq subst
                     unify subst left right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)
                 | Error e1, Error e2 -> Error (e1 + e2)
                 | Error e, _
