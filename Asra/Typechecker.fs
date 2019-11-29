@@ -54,11 +54,17 @@ with
     override self.ToString () = sprintf "(%s: %A)" self.name self.declType
     member self.AsString = self.ToString ()
 
+type EquationKind =
+    | Eq
+    | Inst
+    | Gen
+
 [<StructuredFormatDisplay("{AsString}")>]
 type TypeEquation<'data> = {
     origin: Expression<TypeData<'data>, Declaration>
     left: CheckerType
     right: CheckerType
+    kind: EquationKind
 }
 with 
     override self.ToString () =
@@ -207,6 +213,21 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             left = l
             right = r
             origin = expr
+            kind = Eq
+        }
+
+        let instEq l r = Ok {
+            left = l
+            right = r
+            origin = expr
+            kind = Inst
+        }
+
+        let genEq l r = Ok {
+            left = l
+            right = r
+            origin = expr
+            kind = Gen
         }
 
         let rec genEq (context: SymbolTable) (expr: Expression<TypeData<'data>, Declaration>) =
@@ -317,10 +338,22 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                          Error (sprintf "Cannot unify type %A with %A" left right)
                 | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
     
+    let inst (tp: CheckerType) = tp
+
+    let gen (tp: CheckerType) = tp
+
+    let quantifyEquation (eq: TypeEquation<'data>) =
+        match eq.kind with
+            | Eq -> eq.left, eq.right
+            | Inst -> eq.left, inst eq.right
+            | Gen -> eq.left, gen eq.right
+
     let unifyAll (eqs: Result<TypeEquation<'data>, string> seq) =
         Seq.fold (fun st eq -> 
             match st, eq with
-                | Ok subst, Ok eq -> unify subst eq.left eq.right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)
+                | Ok subst, Ok eq -> 
+                    let (left, right) = quantifyEquation eq
+                    unify subst left right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)
                 | Error e1, Error e2 -> Error (e1 + e2)
                 | Error e, _
                 | _, Error e -> Error e)
