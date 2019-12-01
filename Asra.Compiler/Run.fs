@@ -44,11 +44,6 @@ let run (args: ParseResults<CLI.Arguments>) =
                 inFile = compileArgs.GetResult(CLI.File)
                 outFile = compileArgs.GetResult(CLI.Out)
             }
-
             match Compiler.runCompiler args compilerArgs with
-                | Ok res -> 
-                    printfn "%s" res
-                    0
-                | Error e -> 
-                    printfn "%A" e
-                    255
+                | Ok _ -> 0
+                | Error _ -> 255

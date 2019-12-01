@@ -11,7 +11,7 @@ let fileRead (filename: string) =
 
 let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
     let file = compilerArgs.inFile
-    Errors.result {
+    let res = Errors.result {
         let! code = fileRead file |> Result.mapError IOError
         let! ast = Parser.compilerParser file code |> Result.mapError ParserError
         do args.formatAst ast
@@ -28,3 +28,17 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.log (sprintf "Program type: %A" programType)
         return "Compilation finished"
     }
+    match res with
+        | Ok m -> 
+            args.log m
+            Ok ()
+        | Error (IOError e) -> 
+            args.log (sprintf "IO Error: %s" e)
+            Error ()
+        | Error (ParserError e) -> 
+            args.log (sprintf "Parser Error: %s" e)
+            Error ()
+        | Error (TypecheckError (e, subst)) ->
+            args.log (sprintf "Type Error: %s" e)
+            args.formatSubstitutions subst
+            Error ()

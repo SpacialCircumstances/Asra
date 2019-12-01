@@ -39,7 +39,11 @@ let runCode (args: Arguments) (code: string) =
 
     match replResult with
         | Ok tp -> args.log (sprintf "Program type: %A" tp)
-        | Error e -> args.log (sprintf "Error: %A" e)
+        | Error (IOError e) -> invalidOp (sprintf "Unexpected IO Exception: %s" e)
+        | Error (ParserError e) -> args.log (sprintf "Error: %A" e)
+        | Error (TypecheckError (e, subst)) ->
+            args.log (sprintf "Type Error: %s" e)
+            args.formatSubstitutions subst
 
 let runRepl (args: Arguments) =
     let run = runCode args
