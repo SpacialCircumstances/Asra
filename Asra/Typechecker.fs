@@ -393,7 +393,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             match st, eq with
                 | Ok subst, Ok eq -> 
                     let (left, right) = quantifyEquation eq subst
-                    unify subst left right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation, subst)
+                    unify subst left right |> Result.mapError (fun e -> sprintf "%s in %A (caused by: %A)" e (getData eq.origin).nodeInformation eq, subst)
                 | Error (e2, s1), Error e1 -> Error (e1 + e2, s1)
                 | Error (e, s), _ -> Error (e, s)
                 | _, Error e -> Error (e, Map.empty))
