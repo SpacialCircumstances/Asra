@@ -23,7 +23,7 @@ let readCode () =
 
 let runCode (args: Arguments) (code: string) =
     let replResult = Errors.result {
-        let! ast = Parser.compilerParser "REPL" code
+        let! ast = Parser.compilerParser "REPL" code |> Result.mapError ParserError
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
@@ -32,14 +32,14 @@ let runCode (args: Arguments) (code: string) =
         do args.formatTypedIR typedIR
         let eqs = tc.generateEquations typedIR
         do args.formatEquations eqs
-        let! subst = tc.solveEquations eqs
+        let! subst = tc.solveEquations eqs |> Result.mapError TypecheckError
         do args.formatSubstitutions subst
         return (tc.getExprType typedIR subst)
     }
 
     match replResult with
         | Ok tp -> args.log (sprintf "Program type: %A" tp)
-        | Error e -> args.log (sprintf "Error: %s" e)
+        | Error e -> args.log (sprintf "Error: %A" e)
 
 let runRepl (args: Arguments) =
     let run = runCode args

@@ -12,8 +12,8 @@ let fileRead (filename: string) =
 let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
     let file = compilerArgs.inFile
     Errors.result {
-        let! code = fileRead file
-        let! ast = Parser.compilerParser file code
+        let! code = fileRead file |> Result.mapError IOError
+        let! ast = Parser.compilerParser file code |> Result.mapError ParserError
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
@@ -22,7 +22,7 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.formatTypedIR typedIR
         let eqs = tc.generateEquations typedIR
         do args.formatEquations eqs
-        let! subst = tc.solveEquations eqs
+        let! subst = tc.solveEquations eqs |> Result.mapError TypecheckError
         do args.formatSubstitutions subst
         let programType = (tc.getExprType typedIR subst)
         do args.log (sprintf "Program type: %A" programType)

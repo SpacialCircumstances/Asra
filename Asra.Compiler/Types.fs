@@ -13,3 +13,15 @@ type Arguments = {
     formatSubstitutions: Typechecker.Substitutions -> unit
     log: string -> unit
 }
+
+[<StructuredFormatDisplay("{AsString}")>]
+type CompilerError =
+    | IOError of string
+    | ParserError of string
+    | TypecheckError of string * Typechecker.Substitutions
+with
+    override self.ToString () = match self with
+                                    | IOError e -> e
+                                    | ParserError e -> e
+                                    | TypecheckError (e, s) -> sprintf "%s, %A" e s
+    member self.AsString = self.ToString ()

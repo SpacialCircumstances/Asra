@@ -50,5 +50,5 @@ let run (args: ParseResults<CLI.Arguments>) =
                     printfn "%s" res
                     0
                 | Error e -> 
-                    printfn "%s" e
+                    printfn "%A" e
                     255

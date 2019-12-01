@@ -83,7 +83,7 @@ type Context<'data> = {
     generateTypenames: Expression<'data, AstCommon.Declaration> ->Expression<TypeData<'data>, Declaration>
     getExprType: Expression<TypeData<'data>, Declaration> -> Substitutions -> Types.AType
     generateEquations: Expression<TypeData<'data>, Declaration> -> Result<TypeEquation<'data>, string> seq
-    solveEquations: Result<TypeEquation<'data>, string> seq -> Result<Substitutions, string>
+    solveEquations: Result<TypeEquation<'data>, string> seq -> Result<Substitutions, string * Substitutions>
 }
 
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
@@ -393,10 +393,10 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             match st, eq with
                 | Ok subst, Ok eq -> 
                     let (left, right) = quantifyEquation eq subst
-                    unify subst left right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation)
-                | Error e1, Error e2 -> Error (e1 + e2)
-                | Error e, _
-                | _, Error e -> Error e)
+                    unify subst left right |> Result.mapError (fun e -> sprintf "%s in %A" e (getData eq.origin).nodeInformation, subst)
+                | Error (e2, s1), Error e1 -> Error (e1 + e2, s1)
+                | Error (e, s), _ -> Error (e, s)
+                | _, Error e -> Error (e, Map.empty))
             (Ok Map.empty) eqs
     
     let rec resolveType (subst: Substitutions) (tp: CheckerType): Types.AType =
