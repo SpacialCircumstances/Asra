@@ -342,13 +342,16 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                          Error (sprintf "Cannot unify type %A with %A" left right)
                 | _ -> Error (sprintf "Cannot unify type %A with %A" left right)
     
-    let rec inst (subst: Substitutions) (tp: CheckerType) = 
+    let rec inst (s: Substitutions) (tp: CheckerType) = 
         let rec replace subst t =
             match t with
                 | Var n -> 
-                    match Map.tryFind n subst with
-                        | None -> Var n
-                        | Some x -> replace subst x
+                    match Map.tryFind n s with
+                        | None ->
+                            match Map.tryFind n subst with
+                                | None -> Var n
+                                | Some x -> x
+                        | Some t -> inst subst t
                 | Func (f1, f2) -> Func (replace subst f1, replace subst f2)
                 | Parameterized (name, tps) -> Parameterized (name, List.map (replace subst) tps)
                 | _ -> t
@@ -359,12 +362,12 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                             |> Seq.map (fun x -> x, next ())
                             |> Map.ofSeq
                 replace subst tp
-            | Func (f1, f2) -> Func (inst subst f1, inst subst f2)
-            | Parameterized (n, tps) -> Parameterized (n, List.map (inst subst) tps)
+            | Func (f1, f2) -> Func (inst s f1, inst s f2)
+            | Parameterized (n, tps) -> Parameterized (n, List.map (inst s) tps)
             | Var n ->
-                match Map.tryFind n subst with
+                match Map.tryFind n s with
                     | None -> Var n
-                    | Some t -> inst subst t
+                    | Some t -> inst s t
             | _ -> tp
 
     let rec gen (subst: Substitutions) (tp: CheckerType) = 

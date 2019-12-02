@@ -1,8 +1,7 @@
 {
   "profiles": {
     "Asra": {
-      "commandName": "Project",
-      "commandLineArgs": "repl -v"
+      "commandName": "Project"
     }
   }
 }
