@@ -377,9 +377,9 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             | Var n ->
                 match Map.tryFind n subst with
                     | None -> Set.add n free
-                    | Some x -> Set.union (collect x free) free
-            | Func (f1, f2) -> Set.union (collect f1 free) (collect f2 free)
-            | Parameterized (_, tps) -> Set.unionMany (List.map (fun t -> collect t free) tps)
+                    | Some x -> collect x free
+            | Func (f1, f2) -> collect f1 free |> collect f2
+            | Parameterized (_, tps) -> List.fold (fun s t -> collect t s) free tps
             | _ -> free
 
         let frees = collect tp Set.empty
