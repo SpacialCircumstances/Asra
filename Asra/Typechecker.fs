@@ -36,6 +36,32 @@ with
                         sprintf "(%O -> %O) -> %O" fti fto output
                     | _ -> sprintf "%O -> %O" input output
     member self.AsString = self.ToString()
+    
+type Scheme = (Var list) * Type
+
+module Assumption =
+    type Assumption = {
+        assumptions: (Name * Type) list
+    }
+    
+    let empty = { assumptions = [] }
+
+    let extend assumption (name, tp) = { assumptions = (name, tp) :: assumption.assumptions }
+
+    let remove assumption name = { assumptions = List.filter (fun (n, _) -> n <> name) assumption.assumptions }
+
+    let lookup assumption name = List.filter (fun (n, _) -> n = name) assumption.assumptions |> List.map snd
+    
+    let merge assum1 assum2 = 
+        { assumptions = List.concat [ 
+            assum1.assumptions 
+            assum2.assumptions ] }
+
+    let mergeMany assumptions = { assumptions = List.concat (List.map (fun a -> a.assumptions) assumptions) }
+
+    let singleton (name, tp) = { assumptions = List.singleton (name, tp) }
+
+    let keys assumption = List.map fst assumption.assumptions
 
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     ()
