@@ -92,5 +92,19 @@ module Assumption =
 
     let keys assumption = List.map fst assumption.assumptions
 
+type Constraint =
+    | EqConst of Type * Type
+    | ExpInstConst of Type * Scheme
+    | ImpInstConst of Type * Set<Var> * Scheme
+
+type Substitution = Map<Var, Type>
+
+type TypeError =
+    | UnificationFail of Type * Type
+    | InfiniteType of Var * Type
+    | UnboundVariable of string
+    | Ambigious of Constraint list
+    | UnificationMismatch of Type list * Type list
+
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     ()
