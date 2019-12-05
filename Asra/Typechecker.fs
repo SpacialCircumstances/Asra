@@ -130,7 +130,7 @@ module Substitute =
             | ExpInstConst (t1, t2) -> ExpInstConst (substType s t1, substScheme s t2)
             | ImpInstConst (t1, m, t2) -> ImpInstConst (substType s t1, Set.map (substVar s) m, substScheme s t2)
 
-module FreeTypeVars =
+module TypeVars =
     type FreeTypeVars<'a> = 'a -> Set<Var>
 
     let freeVar: FreeTypeVars<Var> = Set.singleton
