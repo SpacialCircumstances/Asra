@@ -97,14 +97,38 @@ type Constraint =
     | ExpInstConst of Type * Scheme
     | ImpInstConst of Type * Set<Var> * Scheme
 
-type Substitution = Map<Var, Type>
-
 type TypeError =
     | UnificationFail of Type * Type
     | InfiniteType of Var * Type
     | UnboundVariable of string
     | Ambigious of Constraint list
     | UnificationMismatch of Type list * Type list
+
+module Substitute =
+    type Substitution = Map<Var, Type>
+    
+    type Substitute<'a> = Substitution -> 'a -> 'a
+
+    let substVar (s: Substitution) (a: Var) = match Map.tryFind a s with
+                                                | Some (Var v) -> v
+                                                | _ -> a
+
+    let rec substType (s: Substitution) (t: Type) =
+        match t with
+            | Primitive a -> Primitive a
+            | Var v -> substVar s v |> Var
+            | Func (t1, t2) -> Func (substType s t1, substType s t2)
+            | Parameterized _ -> invalidOp "Not implemented"
+
+    let substScheme (s: Substitution) (scheme: Scheme) =
+        let (ts, t) = scheme
+        ts, substType (List.foldBack Map.remove ts s) t
+
+    let substConstraint (s: Substitution) (c: Constraint) =
+        match c with
+            | EqConst (t1, t2) -> EqConst (substType s t1, substType s t2)
+            | ExpInstConst (t1, t2) -> ExpInstConst (substType s t1, substScheme s t2)
+            | ImpInstConst (t1, m, t2) -> ImpInstConst (substType s t1, Set.map (substVar s) m, substScheme s t2)
 
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     ()
