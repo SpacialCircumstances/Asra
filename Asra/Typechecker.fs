@@ -137,6 +137,8 @@ module Substitute =
 module TypeVars =
     type FreeTypeVars<'a> = 'a -> Set<Var>
 
+    type ActiveTypeVars<'a> = 'a -> Set<Var>
+
     let freeVar: FreeTypeVars<Var> = Set.singleton
 
     let freeMany (l: List<'a>) (f: FreeTypeVars<'a>) = Set.unionMany (List.map f l)
@@ -151,6 +153,14 @@ module TypeVars =
             | Parameterized _ -> invalidOp "Not implemented"
 
     let freeScheme: FreeTypeVars<Scheme> = fun (ts, t) -> Set.difference (freeType t) (Set.ofList ts)
+
+    let activeConstraint: ActiveTypeVars<Constraint> = fun c ->
+        match c with
+            | EqConst (t1, t2) -> Set.union (freeType t1) (freeType t2)
+            | ExpInstConst (t, s) -> Set.union (freeType t) (freeScheme s)
+            | ImpInstConst (t1, m, t2) -> Set.union (freeType t1) (Set.intersect (freeSet m freeVar) (freeScheme t2))
+
+    let activeMany (l: List<'a>) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     ()
