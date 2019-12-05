@@ -109,6 +109,10 @@ module Substitute =
     
     type Substitute<'a> = Substitution -> 'a -> 'a
 
+    let substMany = fun s (l: 'a list) (f: Substitute<'a>) -> List.map (f s) l
+
+    let substSet = fun s (set: Set<'a>) (f: Substitute<'a>) -> Set.map (f s) set
+
     let substVar: Substitute<Var> = fun s a -> match Map.tryFind a s with
                                                 | Some (Var v) -> v
                                                 | _ -> a
@@ -128,12 +132,16 @@ module Substitute =
         match c with
             | EqConst (t1, t2) -> EqConst (substType s t1, substType s t2)
             | ExpInstConst (t1, t2) -> ExpInstConst (substType s t1, substScheme s t2)
-            | ImpInstConst (t1, m, t2) -> ImpInstConst (substType s t1, Set.map (substVar s) m, substScheme s t2)
+            | ImpInstConst (t1, m, t2) -> ImpInstConst (substType s t1, substSet s m substVar, substScheme s t2)
 
 module TypeVars =
     type FreeTypeVars<'a> = 'a -> Set<Var>
 
     let freeVar: FreeTypeVars<Var> = Set.singleton
+
+    let freeMany (l: List<'a>) (f: FreeTypeVars<'a>) = Set.unionMany (List.map f l)
+
+    let freeSet (s: Set<'a>) (f: FreeTypeVars<'a>) = Set.unionMany (Seq.map f (Set.toSeq s))
 
     let rec freeType: FreeTypeVars<Type> = fun t ->
         match t with
