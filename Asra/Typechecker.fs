@@ -109,22 +109,22 @@ module Substitute =
     
     type Substitute<'a> = Substitution -> 'a -> 'a
 
-    let substVar (s: Substitution) (a: Var) = match Map.tryFind a s with
+    let substVar: Substitute<Var> = fun s a -> match Map.tryFind a s with
                                                 | Some (Var v) -> v
                                                 | _ -> a
 
-    let rec substType (s: Substitution) (t: Type) =
+    let rec substType: Substitute<Type> = fun s t ->
         match t with
             | Primitive a -> Primitive a
             | Var v -> substVar s v |> Var
             | Func (t1, t2) -> Func (substType s t1, substType s t2)
             | Parameterized _ -> invalidOp "Not implemented"
 
-    let substScheme (s: Substitution) (scheme: Scheme) =
+    let substScheme: Substitute<Scheme> = fun s scheme ->
         let (ts, t) = scheme
         ts, substType (List.foldBack Map.remove ts s) t
 
-    let substConstraint (s: Substitution) (c: Constraint) =
+    let substConstraint: Substitute<Constraint> = fun s c ->
         match c with
             | EqConst (t1, t2) -> EqConst (substType s t1, substType s t2)
             | ExpInstConst (t1, t2) -> ExpInstConst (substType s t1, substScheme s t2)
