@@ -130,5 +130,19 @@ module Substitute =
             | ExpInstConst (t1, t2) -> ExpInstConst (substType s t1, substScheme s t2)
             | ImpInstConst (t1, m, t2) -> ImpInstConst (substType s t1, Set.map (substVar s) m, substScheme s t2)
 
+module FreeTypeVars =
+    type FreeTypeVars<'a> = 'a -> Set<Var>
+
+    let freeVar: FreeTypeVars<Var> = Set.singleton
+
+    let rec freeType: FreeTypeVars<Type> = fun t ->
+        match t with
+            | Primitive _ -> Set.empty
+            | Var a -> Set.singleton a
+            | Func (t1, t2) -> Set.union (freeType t1) (freeType t2)
+            | Parameterized _ -> invalidOp "Not implemented"
+
+    let freeScheme: FreeTypeVars<Scheme> = fun (ts, t) -> Set.difference (freeType t) (Set.ofList ts)
+
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     ()
