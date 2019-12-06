@@ -186,6 +186,13 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 let name = AstCommon.getName d
                 let addAsms = Seq.map (fun ts -> EqConst (ts, tv)) (Assumption.lookup asm name)
                 (Assumption.remove asm (AstCommon.getName d), (Seq.append cs addAsms), Func (tv, t))
+
+            | IR.Application (f, a, data) ->
+                let (as1, cs1, t1) = infer f mset
+                let (as2, cs2, t2) = infer a mset
+                let tv = fresh ()
+                let newAs = EqConst (t1, (Func (t2, tv)))
+                (Assumption.merge as1 as2, Seq.append (Seq.append cs1 cs2) [ newAs ], tv)
     
     let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError> =
         let (a, cs, t) = infer expr Set.empty
