@@ -203,6 +203,17 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 let asms = Assumption.merge as1 (Assumption.remove as2 x)
                 let newCs = Seq.map (fun ts -> ImpInstConst (ts, mset, t1)) (Assumption.lookup as2 x)
                 (asms, Seq.append (Seq.append cs1 cs2) newCs, t2)
+
+            | IR.LetRec _ -> invalidOp "Not implemented"
+
+            | IR.Literal (lit, _) ->
+                match lit with
+                    | AstCommon.Float _ -> Assumption.empty, Seq.empty, Primitive Float
+                    | AstCommon.Int _ -> Assumption.empty, Seq.empty, Primitive Int
+                    | AstCommon.Bool _ -> Assumption.empty, Seq.empty, Primitive Bool
+                    | AstCommon.String _ -> Assumption.empty, Seq.empty, Primitive String
+                    | AstCommon.Unit -> Assumption.empty, Seq.empty, Primitive Unit
+                    | AstCommon.List _ -> invalidOp "Not implemented"
     
     let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError> =
         let (a, cs, t) = infer expr Set.empty
