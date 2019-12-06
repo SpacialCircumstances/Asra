@@ -214,6 +214,15 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                     | AstCommon.String _ -> Assumption.empty, Seq.empty, Primitive String
                     | AstCommon.Unit -> Assumption.empty, Seq.empty, Primitive Unit
                     | AstCommon.List _ -> invalidOp "Not implemented"
+            | IR.If (cond, ifExpr, elseExpr, data) ->
+                let (as1, cs1, t1) = infer cond mset
+                let (as2, cs2, t2) = infer ifExpr mset
+                let (as3, cs3, t3) = infer elseExpr mset
+                let newCs = seq [
+                    EqConst (t1, (Primitive Bool))
+                    EqConst (t2, t3)
+                ]
+                (Assumption.mergeMany [ as1; as2; as3 ], Seq.concat [ cs1; cs2; cs3; newCs ], t2)
     
     let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError> =
         let (a, cs, t) = infer expr Set.empty
