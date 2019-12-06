@@ -180,7 +180,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
     let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
     
-    let solve cs = Map.empty
+    let solve cs = Map.empty |> Ok
 
     let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>) (mset: Set<Var>): Assumption.Assumption * Constraint seq * Type = 
         match expr with
@@ -244,8 +244,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                         for t in (Assumption.lookup a x) do
                             yield ExpInstConst (t, s)
                 }
-                let subst = solve (Seq.append cs cs2)
-                Ok (subst, Substitute.substType subst t)
+                solve (Seq.append cs cs2) |> Result.bind (fun subst -> Ok (subst, Substitute.substType subst t))
 
     let inferExpr (env: Environment.Env) (expr: IR.Expression<'data, AstCommon.Declaration>) =
         match inferType env expr with
