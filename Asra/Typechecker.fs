@@ -171,6 +171,14 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
         x
 
     let fresh () = nextName () |> Var
+
+    let generalize (vars: Set<Var>) (t: Type): Scheme =
+        let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
+        (ts, t)
+
+    let normalize = id //TODO
+
+    let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
     
     let solve cs = Map.empty
 
@@ -238,14 +246,6 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 }
                 let subst = solve (Seq.append cs cs2)
                 Ok (subst, Substitute.substType subst t)
-    
-    let generalize (vars: Set<Var>) (t: Type): Scheme =
-        let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
-        (ts, t)
-
-    let normalize = id //TODO
-
-    let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
 
     let inferExpr (env: Environment.Env) (expr: IR.Expression<'data, AstCommon.Declaration>) =
         match inferType env expr with
