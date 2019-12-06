@@ -95,7 +95,7 @@ module Assumption =
 type Constraint =
     | EqConst of Type * Type
     | ExpInstConst of Type * Scheme
-    | ImpInstConst of Type * Set<Var> * Scheme
+    | ImpInstConst of Type * Set<Var> * Type
 
 type TypeError =
     | UnificationFail of Type * Type
@@ -132,7 +132,7 @@ module Substitute =
         match c with
             | EqConst (t1, t2) -> EqConst (substType s t1, substType s t2)
             | ExpInstConst (t1, t2) -> ExpInstConst (substType s t1, substScheme s t2)
-            | ImpInstConst (t1, m, t2) -> ImpInstConst (substType s t1, substSet s m substVar, substScheme s t2)
+            | ImpInstConst (t1, m, t2) -> ImpInstConst (substType s t1, substSet s m substVar, substType s t2)
 
 module TypeVars =
     type FreeTypeVars<'a> = 'a -> Set<Var>
@@ -158,7 +158,7 @@ module TypeVars =
         match c with
             | EqConst (t1, t2) -> Set.union (freeType t1) (freeType t2)
             | ExpInstConst (t, s) -> Set.union (freeType t) (freeScheme s)
-            | ImpInstConst (t1, m, t2) -> Set.union (freeType t1) (Set.intersect (freeSet m freeVar) (freeScheme t2))
+            | ImpInstConst (t1, m, t2) -> Set.union (freeType t1) (Set.intersect (freeSet m freeVar) (freeType t2))
 
     let activeMany (l: List<'a>) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
@@ -184,15 +184,25 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 let tv = Var a
                 let (asm, cs, t) = infer e (Set.add a mset)
                 let name = AstCommon.getName d
-                let addAsms = Seq.map (fun ts -> EqConst (ts, tv)) (Assumption.lookup asm name)
-                (Assumption.remove asm (AstCommon.getName d), (Seq.append cs addAsms), Func (tv, t))
+                let newCs = Seq.map (fun ts -> EqConst (ts, tv)) (Assumption.lookup asm name)
+                (Assumption.remove asm (AstCommon.getName d), (Seq.append cs newCs), Func (tv, t))
 
             | IR.Application (f, a, data) ->
                 let (as1, cs1, t1) = infer f mset
                 let (as2, cs2, t2) = infer a mset
                 let tv = fresh ()
-                let newAs = EqConst (t1, (Func (t2, tv)))
-                (Assumption.merge as1 as2, Seq.append (Seq.append cs1 cs2) [ newAs ], tv)
+                let newCs = EqConst (t1, (Func (t2, tv)))
+                (Assumption.merge as1 as2, Seq.append (Seq.append cs1 cs2) [ newCs ], tv)
+
+            | IR.Let l ->
+                let x1 = l.value
+                let x2 = l.body
+                let (as1, cs1, t1) = infer x1 mset
+                let (as2, cs2, t2) = infer x2 mset
+                let x = AstCommon.getName l.binding
+                let asms = Assumption.merge as1 (Assumption.remove as2 x)
+                let newCs = Seq.map (fun ts -> ImpInstConst (ts, mset, t1)) (Assumption.lookup as2 x)
+                (asms, Seq.append (Seq.append cs1 cs2) newCs, t2)
     
     let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError> =
         let (a, cs, t) = infer expr Set.empty
