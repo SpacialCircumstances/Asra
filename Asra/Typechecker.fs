@@ -163,8 +163,15 @@ module TypeVars =
     let activeMany (l: List<'a>) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
-    let solve cs = Map.empty
+    let varNameCounter = ref 0
     
+    let fresh () = 
+        let x = Var (sprintf "t%i" !varNameCounter)
+        incr varNameCounter
+        x
+    
+    let solve cs = Map.empty
+
     let infer expr: Assumption.Assumption * Constraint seq * Type = 
         Assumption.empty, Seq.empty, Primitive Bool
     
