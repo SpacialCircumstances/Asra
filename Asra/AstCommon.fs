@@ -63,3 +63,7 @@ with
             | Named n -> n
             | TypeAnnotated (name, td) -> sprintf "(%s: %A)" name td
     member self.AsString = self.ToString ()
+
+let getName decl = match decl with
+                    | Named n -> n
+                    | TypeAnnotated (n, _) -> n

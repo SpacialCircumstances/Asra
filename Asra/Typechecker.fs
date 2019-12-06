@@ -165,17 +165,29 @@ module TypeVars =
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     let varNameCounter = ref 0
     
-    let fresh () = 
-        let x = Var (sprintf "t%i" !varNameCounter)
+    let nextName () = 
+        let x = sprintf "t%i" !varNameCounter
         incr varNameCounter
         x
+
+    let fresh () = nextName () |> Var
     
     let solve cs = Map.empty
 
-    let infer expr: Assumption.Assumption * Constraint seq * Type = 
-        Assumption.empty, Seq.empty, Primitive Bool
+    let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>): Assumption.Assumption * Constraint seq * Type = 
+        match expr with
+            | IR.Variable (x, data) ->
+                let tv = fresh ()
+                (Assumption.singleton (x, tv), Seq.empty, tv)
+            | IR.Lambda (d, e, data) ->
+                let a = nextName ()
+                let tv = Var a
+                let (asm, cs, t) = infer e //TODO
+                let name = AstCommon.getName d
+                let addAsms = Seq.map (fun ts -> EqConst (ts, tv)) (Assumption.lookup asm name)
+                (Assumption.remove asm (AstCommon.getName d), (Seq.append cs addAsms), Func (tv, t))
     
-    let inferType env expr: Result<Substitute.Substitution * Type, TypeError> =
+    let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError> =
         let (a, cs, t) = infer expr
         let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
         match Set.isEmpty unbounds with
@@ -198,7 +210,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
     let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
 
-    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data, AstCommon.TypeDeclaration>) =
+    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data, AstCommon.Declaration>) =
         match inferType env expr with
             | Error e -> Error e
             | Ok (subst, t) -> Ok (closeOver (Substitute.substType subst t))
