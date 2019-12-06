@@ -236,8 +236,8 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
         let (a, cs, t) = infer expr Set.empty
         let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
         match Set.isEmpty unbounds with
-            | true -> UnboundVariable (Set.minElement unbounds) |> Error
-            | false ->
+            | false -> UnboundVariable (Set.minElement unbounds) |> Error
+            | true ->
                 let cs2 = seq {
                     let e = Environment.toSeq env
                     for (x, s) in e do
