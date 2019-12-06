@@ -163,7 +163,25 @@ module TypeVars =
     let activeMany (l: List<'a>) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
-    let inferType env expr: Result<Substitute.Substitution * Type, TypeError> = TypeError.UnboundVariable "" |> Error
+    let solve cs = Map.empty
+    
+    let infer expr: Assumption.Assumption * Constraint seq * Type = 
+        Assumption.empty, Seq.empty, Primitive Bool
+    
+    let inferType env expr: Result<Substitute.Substitution * Type, TypeError> =
+        let (a, cs, t) = infer expr
+        let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
+        match Set.isEmpty unbounds with
+            | true -> UnboundVariable (Set.minElement unbounds) |> Error
+            | false ->
+                let cs2 = seq {
+                    let e = Environment.toSeq env
+                    for (x, s) in e do
+                        for t in (Assumption.lookup a x) do
+                            yield ExpInstConst (t, s)
+                }
+                let subst = solve (Seq.append cs cs2)
+                Ok (subst, Substitute.substType subst t)
     
     let generalize (vars: Set<Var>) (t: Type): Scheme =
         let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
