@@ -163,4 +163,19 @@ module TypeVars =
     let activeMany (l: List<'a>) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
-    ()
+    let inferType env expr: Result<Substitute.Substitution * Type, TypeError> = TypeError.UnboundVariable "" |> Error
+    
+    let generalize (vars: Set<Var>) (t: Type): Scheme =
+        let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
+        (ts, t)
+
+    let normalize = id //TODO
+
+    let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
+
+    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data, AstCommon.TypeDeclaration>) =
+        match inferType env expr with
+            | Error e -> Error e
+            | Ok (subst, t) -> Ok (closeOver (Substitute.substType subst t))
+
+    inferExpr
