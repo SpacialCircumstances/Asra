@@ -86,7 +86,7 @@ module Assumption =
             assum1.assumptions 
             assum2.assumptions ] }
 
-    let mergeMany assumptions = { assumptions = List.concat (List.map (fun a -> a.assumptions) assumptions) }
+    let mergeMany assumptions = { assumptions = List.concat (Seq.map (fun a -> a.assumptions) assumptions) }
 
     let singleton (name, tp) = { assumptions = List.singleton (name, tp) }
 
@@ -141,7 +141,7 @@ module TypeVars =
 
     let freeVar: FreeTypeVars<Var> = Set.singleton
 
-    let freeMany (l: List<'a>) (f: FreeTypeVars<'a>) = Set.unionMany (List.map f l)
+    let freeMany (l: 'a seq) (f: FreeTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
     let freeSet (s: Set<'a>) (f: FreeTypeVars<'a>) = Set.unionMany (Seq.map f (Set.toSeq s))
 
@@ -160,7 +160,7 @@ module TypeVars =
             | ExpInstConst (t, s) -> Set.union (freeType t) (freeScheme s)
             | ImpInstConst (t1, m, t2) -> Set.union (freeType t1) (Set.intersect (freeSet m freeVar) (freeType t2))
 
-    let activeMany (l: List<'a>) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
+    let activeMany (l: 'a seq) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
 let nameGen () =
     let varNameCounter = ref 0
