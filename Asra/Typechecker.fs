@@ -174,7 +174,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     
     let solve cs = Map.empty
 
-    let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>): Assumption.Assumption * Constraint seq * Type = 
+    let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>) (mset: Set<Var>): Assumption.Assumption * Constraint seq * Type = 
         match expr with
             | IR.Variable (x, data) ->
                 let tv = fresh ()
@@ -182,13 +182,13 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             | IR.Lambda (d, e, data) ->
                 let a = nextName ()
                 let tv = Var a
-                let (asm, cs, t) = infer e //TODO
+                let (asm, cs, t) = infer e (Set.add a mset)
                 let name = AstCommon.getName d
                 let addAsms = Seq.map (fun ts -> EqConst (ts, tv)) (Assumption.lookup asm name)
                 (Assumption.remove asm (AstCommon.getName d), (Seq.append cs addAsms), Func (tv, t))
     
     let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError> =
-        let (a, cs, t) = infer expr
+        let (a, cs, t) = infer expr Set.empty
         let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
         match Set.isEmpty unbounds with
             | true -> UnboundVariable (Set.minElement unbounds) |> Error
