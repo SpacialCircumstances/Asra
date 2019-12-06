@@ -162,7 +162,7 @@ module TypeVars =
 
     let activeMany (l: List<'a>) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
-let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
+let nameGen () =
     let varNameCounter = ref 0
     
     let nextName () = 
@@ -170,13 +170,38 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
         incr varNameCounter
         x
 
-    let fresh () = nextName () |> Var
+    nextName
+
+let next n = fun () -> n () |> Var
+
+let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
+    let nextName = nameGen ()
+    let fresh = next nextName
 
     let generalize (vars: Set<Var>) (t: Type): Scheme =
         let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
         (ts, t)
 
-    let normalize = id //TODO
+    let normalize (_, body) = 
+        let rec fv t =
+            match t with
+                | Var a -> [ a ]
+                | Func (t1, t2) -> fv t1 @ fv t2
+                | Primitive _ -> []
+                | Parameterized _ -> invalidOp "Not implemented"
+
+        let vg = nameGen () |> next
+        let ord = Seq.zip (fv body |> List.distinct) (Seq.initInfinite (fun _ -> vg ())) |> Map.ofSeq
+
+        let rec normtype t =
+            match t with
+                | Primitive x -> Primitive x
+                | Func (t1, t2) -> Func (normtype t1, normtype t2)
+                | Var a -> Map.find a ord
+                | Parameterized _ -> invalidOp "Not implemented"
+        
+        let normed = normtype body
+        (TypeVars.freeType normed |> Set.toList, normed)
 
     let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
     
