@@ -182,6 +182,9 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
         let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
         (ts, t)
 
+    let instantiate (ts, t) =
+        t //TODO
+
     let normalize (_, body) = 
         let rec fv t =
             match t with
@@ -205,7 +208,17 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
     let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
     
-    let rec solve subst c = Ok subst
+    let unify t1 t2 subst = Ok subst
+
+    let rec solve subst c =
+        match c with
+            | EqConst (t1, t2) ->
+                unify t1 t2 subst
+            | ExpInstConst (t, s) ->
+                let s' = instantiate s
+                solve subst (EqConst (t, s'))
+            | ImpInstConst (t1, ms, t2) ->
+                solve subst (ExpInstConst (t1, generalize ms t2))
 
     let solveAll cs = Seq.fold (fun s c -> Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
 
