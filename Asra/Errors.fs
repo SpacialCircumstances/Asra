@@ -9,6 +9,7 @@ let collectErrors (results: Result<'a, 'b> list): 'a list * 'b list =
 type ResultBuilder () =
     member this.Bind (r, f) = Result.bind f r
     member this.Return (x) = Ok x
+    member this.ReturnFrom (a) = a
     member this.Zero () = Ok ()
 
 let result = new ResultBuilder()
