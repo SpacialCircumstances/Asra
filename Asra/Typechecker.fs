@@ -183,7 +183,8 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
         (ts, t)
 
     let instantiate (ts, t) =
-        t //TODO
+        let s = Map.ofList (List.map (fun o -> o, fresh ()) ts)
+        Substitute.substType s t
 
     let normalize (_, body) = 
         let rec fv t =
