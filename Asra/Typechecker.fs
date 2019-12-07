@@ -209,7 +209,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
     let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
     
-    let occurs v t = false
+    let occurs v t = Set.contains v (TypeVars.freeType t)
 
     let rec unify t1 t2 subst =
         let bind v t =
