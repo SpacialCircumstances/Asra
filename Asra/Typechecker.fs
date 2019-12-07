@@ -292,4 +292,19 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             | Error e -> Error e
             | Ok (subst, t) -> Ok (closeOver (Substitute.substType subst t))
 
-    inferExpr
+    let rec toType (td: AstCommon.TypeDeclaration) =
+        match td with
+            | AstCommon.Name "Int" -> Primitive Int
+            | AstCommon.Name "String" -> Primitive String
+            | AstCommon.Name "Float" -> Primitive Float
+            | AstCommon.Name "Bool" -> Primitive Bool
+            | AstCommon.Name "Unit" -> Primitive Unit
+            | AstCommon.Name _ -> fresh () //TODO
+            | AstCommon.Generic _ -> fresh () //TODO
+            | AstCommon.Function (itd, otd) -> Func (toType itd, toType otd)
+            | AstCommon.Parameterized (name, parameters) ->
+                Parameterized (name, List.map toType parameters)
+
+    let initialContext = Environment.fromSeq (Seq.map (fun (n, td) -> n, toType td |> generalize Set.empty) (Map.toSeq initialTypes))
+
+    inferExpr initialContext
