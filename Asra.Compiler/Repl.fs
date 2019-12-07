@@ -28,22 +28,15 @@ let runCode (args: Arguments) (code: string) =
         let ir = IRGenerator.map ast
         do args.formatIR ir
         let tc = Typechecker.createContext Prelude.context
-        let typedIR = tc.generateTypenames ir
-        do args.formatTypedIR typedIR
-        let eqs = tc.generateEquations typedIR
-        do args.formatEquations eqs
-        let! subst = tc.solveEquations eqs |> Result.mapError TypecheckError
-        do args.formatSubstitutions subst
-        return (tc.getExprType typedIR subst)
+        return! tc ir |> Result.mapError TypecheckError
     }
 
     match replResult with
         | Ok tp -> args.log (sprintf "Program type: %A" tp)
         | Error (IOError e) -> invalidOp (sprintf "Unexpected IO Exception: %s" e)
         | Error (ParserError e) -> args.log (sprintf "Error: %A" e)
-        | Error (TypecheckError (e, subst)) ->
-            args.log (sprintf "Type Error: %s" e)
-            args.formatSubstitutions subst
+        | Error (TypecheckError t) ->
+            args.log (sprintf "Type Error: %A" t)
 
 let runRepl (args: Arguments) =
     let run = runCode args
