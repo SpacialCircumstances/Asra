@@ -209,7 +209,29 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
     let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
     
-    let unify t1 t2 subst = Ok subst
+    let occurs v t = false
+
+    let rec unify t1 t2 subst =
+        let bind v t =
+            if t = Var v then
+                subst |> Ok
+            else if occurs v t then
+                Error (InfiniteType (v, t))
+            else
+                Map.add v t subst |> Ok
+
+        match Substitute.substType subst t1, Substitute.substType subst t2 with
+            | r1, r2 when r1 = r2 -> Ok subst
+            | Var v, t -> bind v t
+            | t, Var v -> bind v t
+            | Func (t1, t2), Func (t3, t4) ->
+                Errors.result {
+                    let! s1 = unify t1 t3 subst
+                    return! unify t2 t4 s1
+                }
+            | Parameterized (n1, ts1), Parameterized (n2, ts2) ->
+                invalidOp "Not implemented"
+            | _ -> Error (UnificationFail (t1, t2))
 
     let rec solve subst c =
         match c with
