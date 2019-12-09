@@ -117,8 +117,6 @@ module Substitute =
 
     let substMany = fun s (l: 'a seq) (f: Substitute<'a>) -> Seq.map (f s) l
 
-    let substSet = fun s (set: Set<'a>) (f: Substitute<'a>) -> Set.map (f s) 
-
     let rec substType: Substitute<Type> = fun s t ->
         match t with
             | Primitive a -> Primitive a
@@ -137,8 +135,6 @@ module TypeVars =
 
     type ActiveTypeVars<'a> = 'a -> Set<Var>
 
-    let freeVar: FreeTypeVars<Var> = Set.singleton
-
     let freeMany (l: 'a seq) (f: FreeTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
     let freeSet (s: Set<'a>) (f: FreeTypeVars<'a>) = Set.unionMany (Seq.map f (Set.toSeq s))
@@ -156,7 +152,7 @@ module TypeVars =
         match c with
             | EqConst (t1, t2) -> Set.union (freeType t1) (freeType t2)
             | ExpInstConst (t, s) -> Set.union (freeType t) (freeScheme s)
-            | ImpInstConst (t1, m, t2) -> Set.union (freeType t1) (Set.intersect (freeSet m freeVar) (freeType t2))
+            | ImpInstConst (t1, m, t2) -> Set.union (freeType t1) (Set.intersect m (freeType t2))
 
     let activeMany (l: 'a seq) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
