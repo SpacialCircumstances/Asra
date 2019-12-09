@@ -37,7 +37,7 @@ with
                     | _ -> sprintf "%O -> %O" input output
     member self.AsString = self.ToString()
     
-type Scheme = (Var list) * Type
+type Scheme = Scheme of (Var list) * Type
 
 module Environment =
     let mergeMaps map1 map2 = Map.fold (fun acc key value -> Map.add key value acc) map1 map2
@@ -126,9 +126,8 @@ module Substitute =
             | Func (t1, t2) -> Func (substType s t1, substType s t2)
             | Parameterized _ -> invalidOp "Not implemented"
 
-    let substScheme: Substitute<Scheme> = fun s scheme ->
-        let (ts, t) = scheme
-        ts, substType (List.foldBack Map.remove ts s) t
+    let substScheme: Substitute<Scheme> = fun s (Scheme (ts, t)) ->
+        (ts, substType (List.foldBack Map.remove ts s) t) |> Scheme
 
 module TypeVars =
     type FreeTypeVars<'a> = 'a -> Set<Var>
@@ -146,7 +145,7 @@ module TypeVars =
             | Func (t1, t2) -> Set.union (freeType t1) (freeType t2)
             | Parameterized _ -> invalidOp "Not implemented"
 
-    let freeScheme: FreeTypeVars<Scheme> = fun (ts, t) -> Set.difference (freeType t) (Set.ofList ts)
+    let freeScheme: FreeTypeVars<Scheme> = fun (Scheme (ts, t)) -> Set.difference (freeType t) (Set.ofList ts)
 
     let activeConstraint: ActiveTypeVars<Constraint> = fun c ->
         match c with
@@ -174,13 +173,13 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
     let generalize (vars: Set<Var>) (t: Type): Scheme =
         let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
-        (ts, t)
+        (ts, t) |> Scheme
 
-    let instantiate (ts, t) =
+    let instantiate (Scheme (ts, t)) =
         let s = Map.ofList (List.map (fun o -> o, fresh ()) ts)
         Substitute.substType s t
 
-    let normalize (_, body) = 
+    let normalize (Scheme (_, body)) = 
         let rec fv t =
             match t with
                 | Var a -> [ a ]
@@ -199,7 +198,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 | Parameterized _ -> invalidOp "Not implemented"
         
         let normed = normtype body
-        (TypeVars.freeType normed |> Set.toList, normed)
+        (TypeVars.freeType normed |> Set.toList, normed) |> Scheme
 
     let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
     
