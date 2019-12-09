@@ -249,7 +249,9 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
             | ImpInstConst (t1, ms, t2) ->
                 solve subst (ExpInstConst (t1, generalize ms t2))
 
-    let solveAll cs = Seq.fold (fun s c -> Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
+    let solveAll cs = Seq.fold (fun s c -> 
+        printfn "Solving: %A" c
+        Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
 
     let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>) (mset: Set<Var>): Assumption.Assumption * Constraint seq * Type = 
         match expr with
@@ -307,18 +309,20 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
         match Set.isEmpty unbounds with
             | false -> UnboundVariable (Set.minElement unbounds) |> Error
             | true ->
-                let cs2 = seq {
+                let externConstraints = seq {
                     let e = Environment.toSeq env
                     for (x, s) in e do
                         for t in (Assumption.lookup a x) do
                             yield ExpInstConst (t, s)
                 }
-                solveAll (Seq.append cs cs2) |> Result.bind (fun subst -> Ok (subst, Substitute.substType subst t))
+                solveAll (Seq.append externConstraints cs) |> Result.bind (fun subst -> Ok (subst, Substitute.substType subst t))
 
     let inferExpr (env: Environment.Env) (expr: IR.Expression<'data, AstCommon.Declaration>) =
         match inferType env expr with
             | Error e -> Error e
-            | Ok (subst, t) -> Ok (closeOver (Substitute.substType subst t))
+            | Ok (subst, t) -> 
+                printfn "%A" subst
+                Ok (closeOver (Substitute.substType subst t))
 
     let rec toType (td: AstCommon.TypeDeclaration) =
         match td with
