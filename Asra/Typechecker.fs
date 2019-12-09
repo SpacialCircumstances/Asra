@@ -92,10 +92,16 @@ module Assumption =
 
     let keys assumption = List.map fst assumption.assumptions
 
-type Constraint =
+type [<StructuredFormatDisplay("{AsString}")>] Constraint =
     | EqConst of Type * Type
     | ExpInstConst of Type * Scheme
     | ImpInstConst of Type * Set<Var> * Type
+with
+    override self.ToString () = match self with
+                                    | EqConst (t1, t2) -> sprintf "%A = %A" t1 t2
+                                    | ImpInstConst (t1, m, t2) -> sprintf "%A = %A (%A)" t1 t2 m
+                                    | ExpInstConst (t1, s) -> sprintf "%A = %A" t1 s
+    member self.AsString = self.ToString ()
 
 type TypeError =
     | UnificationFail of Type * Type
