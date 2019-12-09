@@ -117,28 +117,20 @@ module Substitute =
 
     let substMany = fun s (l: 'a seq) (f: Substitute<'a>) -> Seq.map (f s) l
 
-    let substSet = fun s (set: Set<'a>) (f: Substitute<'a>) -> Set.map (f s) set
-
-    let substVar: Substitute<Var> = fun s a -> match Map.tryFind a s with
-                                                | Some (Var v) -> v
-                                                | _ -> a
+    let substSet = fun s (set: Set<'a>) (f: Substitute<'a>) -> Set.map (f s) 
 
     let rec substType: Substitute<Type> = fun s t ->
         match t with
             | Primitive a -> Primitive a
-            | Var v -> substVar s v |> Var
+            | Var v -> match Map.tryFind v s with
+                        | None -> Var v
+                        | Some t -> substType s t
             | Func (t1, t2) -> Func (substType s t1, substType s t2)
             | Parameterized _ -> invalidOp "Not implemented"
 
     let substScheme: Substitute<Scheme> = fun s scheme ->
         let (ts, t) = scheme
         ts, substType (List.foldBack Map.remove ts s) t
-
-    let substConstraint: Substitute<Constraint> = fun s c ->
-        match c with
-            | EqConst (t1, t2) -> EqConst (substType s t1, substType s t2)
-            | ExpInstConst (t1, t2) -> ExpInstConst (substType s t1, substScheme s t2)
-            | ImpInstConst (t1, m, t2) -> ImpInstConst (substType s t1, substSet s m substVar, substType s t2)
 
 module TypeVars =
     type FreeTypeVars<'a> = 'a -> Set<Var>
