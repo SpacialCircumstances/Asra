@@ -37,7 +37,17 @@ with
                     | _ -> sprintf "%O -> %O" input output
     member self.AsString = self.ToString()
     
-type Scheme = Scheme of (Var list) * Type
+type [<StructuredFormatDisplay("{AsString}")>] Scheme = 
+    | Scheme of (Var list) * Type
+with
+    override self.ToString () = 
+        let (Scheme (fvs, t)) = self
+        match fvs with
+            | [] -> t.ToString ()
+            | _ -> sprintf "forall %s. %A" (System.String.Join(". ", fvs)) t
+
+    member self.AsString = self.ToString ()
+
 
 module Environment =
     let mergeMaps map1 map2 = Map.fold (fun acc key value -> Map.add key value acc) map1 map2
