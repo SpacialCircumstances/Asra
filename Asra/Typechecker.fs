@@ -244,7 +244,8 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 let s' = instantiate s
                 solve subst (EqConst (t, s'))
             | ImpInstConst (t1, ms, t2) ->
-                solve subst (ExpInstConst (t1, generalize ms t2))
+                let toGen = Substitute.substType subst t2
+                solve subst (ExpInstConst (t1, generalize ms toGen))
 
     let solveAll cs = Seq.fold (fun s c -> 
         printfn "Solving: %A" c
