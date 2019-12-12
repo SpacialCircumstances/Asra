@@ -102,22 +102,31 @@ module Assumption =
 
     let keys assumption = List.map fst assumption.assumptions
 
-type [<StructuredFormatDisplay("{AsString}")>] Constraint =
-    | EqConst of Type * Type
-    | ExpInstConst of Type * Scheme
-    | ImpInstConst of Type * Set<Var> * Type
+type [<StructuredFormatDisplay("{AsString}")>] ConstraintOrigin<'data> =
+    | ExprOrigin of string * 'data
+    | Extern of Name
 with
     override self.ToString () = match self with
-                                    | EqConst (t1, t2) -> sprintf "%A = %A" t1 t2
-                                    | ImpInstConst (t1, m, t2) -> sprintf "%A = %A (%A)" t1 t2 m
-                                    | ExpInstConst (t1, s) -> sprintf "%A = %A" t1 s
+                                | ExprOrigin (en, data) -> sprintf "%s: %A" en data
+                                | Extern name -> sprintf "Extern: %s" name
     member self.AsString = self.ToString ()
 
-type TypeError =
+type [<StructuredFormatDisplay("{AsString}")>] Constraint<'data> =
+    | EqConst of Type * Type * ConstraintOrigin<'data>
+    | ExpInstConst of Type * Scheme * ConstraintOrigin<'data>
+    | ImpInstConst of Type * Set<Var> * Type * ConstraintOrigin<'data>
+with
+    override self.ToString () = match self with
+                                    | EqConst (t1, t2, orig) -> sprintf "%A = %A (%A)" t1 t2 orig
+                                    | ImpInstConst (t1, m, t2, orig) -> sprintf "%A = %A (%A) (%A)" t1 t2 m orig
+                                    | ExpInstConst (t1, s, orig) -> sprintf "%A = %A (%A)" t1 s orig
+    member self.AsString = self.ToString ()
+
+type TypeError<'data> =
     | UnificationFail of Type * Type
     | InfiniteType of Var * Type
     | UnboundVariable of string
-    | Ambigious of Constraint list
+    | Ambigious of Constraint<'data> list
     | UnificationMismatch of Type list * Type list
 
 module Substitute =
@@ -157,11 +166,11 @@ module TypeVars =
 
     let freeScheme: FreeTypeVars<Scheme> = fun (Scheme (ts, t)) -> Set.difference (freeType t) (Set.ofList ts)
 
-    let activeConstraint: ActiveTypeVars<Constraint> = fun c ->
+    let activeConstraint: ActiveTypeVars<Constraint<'data>> = fun c ->
         match c with
-            | EqConst (t1, t2) -> Set.union (freeType t1) (freeType t2)
-            | ExpInstConst (t, s) -> Set.union (freeType t) (freeScheme s)
-            | ImpInstConst (t1, m, t2) -> Set.union (freeType t1) (Set.intersect m (freeType t2))
+            | EqConst (t1, t2, _) -> Set.union (freeType t1) (freeType t2)
+            | ExpInstConst (t, s, _) -> Set.union (freeType t) (freeScheme s)
+            | ImpInstConst (t1, m, t2, _) -> Set.union (freeType t1) (Set.intersect m (freeType t2))
 
     let activeMany (l: 'a seq) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
@@ -238,20 +247,20 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
     let rec solve subst c =
         match c with
-            | EqConst (t1, t2) ->
+            | EqConst (t1, t2, _) ->
                 unify t1 t2 subst
-            | ExpInstConst (t, s) ->
+            | ExpInstConst (t, s, orig) ->
                 let s' = instantiate s
-                solve subst (EqConst (t, s'))
-            | ImpInstConst (t1, ms, t2) ->
+                solve subst (EqConst (t, s', orig))
+            | ImpInstConst (t1, ms, t2, orig) ->
                 let toGen = Substitute.substType subst t2
-                solve subst (ExpInstConst (t1, generalize ms toGen))
+                solve subst (ExpInstConst (t1, generalize ms toGen, orig))
 
     let solveAll cs = Seq.fold (fun s c -> 
         printfn "Solving: %A" c
         Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
 
-    let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>) (mset: Set<Var>): Assumption.Assumption * Constraint seq * Type = 
+    let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>) (mset: Set<Var>): Assumption.Assumption * Constraint<'data> seq * Type = 
         match expr with
             | IR.Variable (x, data) ->
                 let tv = fresh ()
@@ -261,14 +270,16 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 let tv = Var a
                 let (asm, cs, t) = infer e (Set.add a mset)
                 let name = AstCommon.getName d
-                let newCs = Seq.map (fun ts -> EqConst (ts, tv)) (Assumption.lookup asm name)
+                let orig = ("Lambda", data) |> ExprOrigin
+                let newCs = Seq.map (fun ts -> EqConst (ts, tv, orig)) (Assumption.lookup asm name)
                 (Assumption.remove asm (AstCommon.getName d), (Seq.append cs newCs), Func (tv, t))
 
             | IR.Application (f, a, data) ->
                 let (as1, cs1, t1) = infer f mset
                 let (as2, cs2, t2) = infer a mset
                 let tv = fresh ()
-                let newCs = EqConst (t1, (Func (t2, tv)))
+                let orig = ("App", data) |> ExprOrigin
+                let newCs = EqConst (t1, (Func (t2, tv)), orig)
                 (Assumption.merge as1 as2, Seq.append (Seq.append cs1 cs2) [ newCs ], tv)
 
             | IR.Let l ->
@@ -278,7 +289,8 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 let (as2, cs2, t2) = infer x2 mset
                 let x = AstCommon.getName l.binding
                 let asms = Assumption.merge as1 (Assumption.remove as2 x)
-                let newCs = Seq.map (fun ts -> ImpInstConst (ts, mset, t1)) (Assumption.lookup as2 x)
+                let orig = ("Let", l.data) |> ExprOrigin
+                let newCs = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 x)
                 (asms, Seq.append (Seq.append cs1 cs2) newCs, t2)
 
             | IR.LetRec _ -> invalidOp "Not implemented"
@@ -295,13 +307,14 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 let (as1, cs1, t1) = infer cond mset
                 let (as2, cs2, t2) = infer ifExpr mset
                 let (as3, cs3, t3) = infer elseExpr mset
+                let orig = ("If", data) |> ExprOrigin
                 let newCs = seq [
-                    EqConst (t1, (Primitive Bool))
-                    EqConst (t2, t3)
+                    EqConst (t1, (Primitive Bool), orig)
+                    EqConst (t2, t3, orig)
                 ]
                 (Assumption.mergeMany [ as1; as2; as3 ], Seq.concat [ cs1; cs2; cs3; newCs ], t2)
     
-    let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError> =
+    let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError<'data>> =
         let (a, cs, t) = infer expr Set.empty
         let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
         match Set.isEmpty unbounds with
@@ -311,7 +324,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                     let e = Environment.toSeq env
                     for (x, s) in e do
                         for t in (Assumption.lookup a x) do
-                            yield ExpInstConst (t, s)
+                            yield ExpInstConst (t, s, Extern x)
                 }
                 solveAll (Seq.append externConstraints cs) |> Result.bind (fun subst -> Ok (subst, Substitute.substType subst t))
 

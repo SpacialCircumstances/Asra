@@ -12,10 +12,10 @@ type Arguments = {
 }
 
 [<StructuredFormatDisplay("{AsString}")>]
-type CompilerError =
+type CompilerError<'data> =
     | IOError of string
     | ParserError of string
-    | TypecheckError of Typechecker.TypeError
+    | TypecheckError of Typechecker.TypeError<'data>
 with
     override self.ToString () = match self with
                                     | IOError e -> e
