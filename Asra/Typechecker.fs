@@ -242,7 +242,10 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                     return! unify t2 t4 s1
                 }
             | Parameterized (n1, ts1), Parameterized (n2, ts2) ->
-                invalidOp "Not implemented"
+                if n1 = n2 && (List.length ts1) = (List.length ts2) then
+                    List.fold2 (fun s p1 p2 -> Result.bind (fun s -> unify p1 p2 s) s) (Ok subst) ts1 ts2
+                else
+                    UnificationFail (t1, t2) |> Error
             | _ -> Error (UnificationFail (t1, t2))
 
     let rec solve subst c =
