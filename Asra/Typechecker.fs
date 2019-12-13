@@ -143,7 +143,7 @@ module Substitute =
                         | None -> Var v
                         | Some t -> substType s t
             | Func (t1, t2) -> Func (substType s t1, substType s t2)
-            | Parameterized _ -> invalidOp "Not implemented"
+            | Parameterized (n, ts) -> Parameterized (n, List.map (substType s) ts)
 
     let substScheme: Substitute<Scheme> = fun s (Scheme (ts, t)) ->
         (ts, substType (List.foldBack Map.remove ts s) t) |> Scheme
@@ -296,14 +296,20 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
 
             | IR.LetRec _ -> invalidOp "Not implemented"
 
-            | IR.Literal (lit, _) ->
+            | IR.Literal (lit, data) ->
                 match lit with
                     | AstCommon.Float _ -> Assumption.empty, Seq.empty, Primitive Float
                     | AstCommon.Int _ -> Assumption.empty, Seq.empty, Primitive Int
                     | AstCommon.Bool _ -> Assumption.empty, Seq.empty, Primitive Bool
                     | AstCommon.String _ -> Assumption.empty, Seq.empty, Primitive String
                     | AstCommon.Unit -> Assumption.empty, Seq.empty, Primitive Unit
-                    | AstCommon.List _ -> invalidOp "Not implemented"
+                    | AstCommon.List exprs -> 
+                        let pvar = fresh ()
+                        let (assumptions, constraints) = Seq.fold (fun (a, c) expr ->
+                            let (newAs, newCs, exprT) = infer expr mset
+                            let newCs = Seq.append newCs (EqConst (pvar, exprT, ExprOrigin ("List", data)) |> Seq.singleton)
+                            (Assumption.merge a newAs, Seq.append c newCs)) (Assumption.empty, Seq.empty) exprs
+                        assumptions, constraints, Parameterized ("List", [ fresh () ])
             | IR.If (cond, ifExpr, elseExpr, data) ->
                 let (as1, cs1, t1) = infer cond mset
                 let (as2, cs2, t2) = infer ifExpr mset
