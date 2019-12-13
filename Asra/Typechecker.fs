@@ -283,15 +283,13 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 (Assumption.merge as1 as2, Seq.append (Seq.append cs1 cs2) [ newCs ], tv)
 
             | IR.Let l ->
-                let x1 = l.value
-                let x2 = l.body
-                let (as1, cs1, t1) = infer x1 mset
-                let (as2, cs2, t2) = infer x2 mset
+                let (as1, cs1, t1) = infer l.value mset
+                let (as2, cs2, t2) = infer l.body mset
                 let x = AstCommon.getName l.binding
                 let asms = Assumption.merge as1 (Assumption.remove as2 x)
                 let orig = ("Let", l.data) |> ExprOrigin
                 let newCs = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 x)
-                (asms, Seq.append (Seq.append cs1 cs2) newCs, t2)
+                (asms, Seq.append (Seq.append cs1 newCs) cs2, t2)
 
             | IR.LetRec _ -> invalidOp "Not implemented"
 
