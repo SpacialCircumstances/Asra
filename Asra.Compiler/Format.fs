@@ -4,7 +4,7 @@ open System.IO
 
 type Formatter<'a> = TextWriter -> 'a -> unit
 
-let formatLog: Formatter<string> = fun writer -> fprintfn writer "LOG: %s"
+let formatLog: Formatter<string> = fun writer -> fprintfn writer "%s"
 
 let withHeader (header: string) (print: (Printf.TextWriterFormat<'a> -> 'a) -> 'b -> unit) =
     fun writer a ->
