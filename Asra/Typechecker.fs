@@ -162,7 +162,7 @@ module TypeVars =
             | Primitive _ -> Set.empty
             | Var a -> Set.singleton a
             | Func (t1, t2) -> Set.union (freeType t1) (freeType t2)
-            | Parameterized _ -> invalidOp "Not implemented"
+            | Parameterized (n, ts) -> Set.unionMany (List.map freeType ts) 
 
     let freeScheme: FreeTypeVars<Scheme> = fun (Scheme (ts, t)) -> Set.difference (freeType t) (Set.ofList ts)
 
@@ -204,7 +204,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 | Var a -> [ a ]
                 | Func (t1, t2) -> fv t1 @ fv t2
                 | Primitive _ -> []
-                | Parameterized _ -> invalidOp "Not implemented"
+                | Parameterized (_, ts) -> List.collect fv ts 
 
         let vg = nameGen () |> next
         let ord = Seq.zip (fv body |> List.distinct) (Seq.initInfinite (fun _ -> vg ())) |> Map.ofSeq
@@ -214,12 +214,12 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
                 | Primitive x -> Primitive x
                 | Func (t1, t2) -> Func (normtype t1, normtype t2)
                 | Var a -> Map.find a ord
-                | Parameterized _ -> invalidOp "Not implemented"
+                | Parameterized (n, ts) -> Parameterized (n, List.map normtype ts)
         
         let normed = normtype body
         (TypeVars.freeType normed |> Set.toList, normed) |> Scheme
 
-    let closeOver (t: Type): Scheme = generalize Set.empty t |> normalize
+    let closeOver (t: Type): Scheme = generalize Set.empty t// |> normalize
     
     let occurs v t = Set.contains v (TypeVars.freeType t)
 
