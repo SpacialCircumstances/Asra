@@ -17,7 +17,7 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
-        let tc = Typechecker.createContext Prelude.context
+        let tc = Typechecker.createContext Prelude.context args.log
         let! programType = tc ir |> Result.mapError TypecheckError
         do args.log (sprintf "Program type: %A" programType)
         return "Compilation finished"

@@ -27,7 +27,7 @@ let runCode (args: Arguments) (code: string) =
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
-        let tc = Typechecker.createContext Prelude.context
+        let tc = Typechecker.createContext Prelude.context args.log
         return! tc ir |> Result.mapError TypecheckError
     }
 

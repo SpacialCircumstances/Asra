@@ -186,7 +186,7 @@ let nameGen () =
 
 let next n = fun () -> n () |> Var
 
-let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
+let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: string -> unit) =
     let nextName = nameGen ()
     let fresh = next nextName
 
@@ -251,16 +251,18 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
     let rec solve subst c =
         match c with
             | EqConst (t1, t2, _) ->
+                log (sprintf "Solving: %A" c)
                 unify t1 t2 subst
             | ExpInstConst (t, s, orig) ->
                 let s' = instantiate s
+                log (sprintf "Instantiating: %A" c)
                 solve subst (EqConst (t, s', orig))
             | ImpInstConst (t1, ms, t2, orig) ->
                 let toGen = Substitute.substType subst t2
+                log (sprintf "Generalizing: %A" c)
                 solve subst (ExpInstConst (t1, generalize ms toGen, orig))
 
     let solveAll cs = Seq.fold (fun s c -> 
-        printfn "Solving: %A" c
         Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
 
     let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>) (mset: Set<Var>): Assumption.Assumption * Constraint<'data> seq * Type = 
@@ -339,7 +341,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) =
         match inferType env expr with
             | Error e -> Error e
             | Ok (subst, t) -> 
-                printfn "%A" subst
+                Map.iter (fun k v -> log (sprintf "'%s -> %A" k v)) subst
                 Ok (closeOver (Substitute.substType subst t))
 
     let rec toType (td: AstCommon.TypeDeclaration) =
