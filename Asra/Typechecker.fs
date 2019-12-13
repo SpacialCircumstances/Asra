@@ -311,7 +311,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                             let (newAs, newCs, exprT) = infer expr mset
                             let newCs = Seq.append newCs (EqConst (pvar, exprT, ExprOrigin ("List", data)) |> Seq.singleton)
                             (Assumption.merge a newAs, Seq.append c newCs)) (Assumption.empty, Seq.empty) exprs
-                        assumptions, constraints, Parameterized ("List", [ fresh () ])
+                        assumptions, constraints, Parameterized ("List", [ pvar ])
             | IR.If (cond, ifExpr, elseExpr, data) ->
                 let (as1, cs1, t1) = infer cond mset
                 let (as2, cs2, t2) = infer ifExpr mset
