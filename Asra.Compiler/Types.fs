@@ -7,7 +7,7 @@ type CompilerArguments = {
 
 type Arguments = {
     formatAst: FrontendAst.Expression<AstCommon.SourcePosition> -> unit
-    formatIR: IR.Expression<AstCommon.SourcePosition, AstCommon.Declaration> -> unit
+    formatIR: IR.Expression<AstCommon.SourcePosition> -> unit
     log: string -> unit
 }
 

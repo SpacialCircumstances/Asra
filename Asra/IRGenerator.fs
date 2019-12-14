@@ -2,13 +2,13 @@
 
 open AstCommon
 
-let rec lambdaCurry (decls: Declaration list) (expr: IR.Expression<'data, Declaration>) (data: 'data) =
+let rec lambdaCurry (decls: Declaration list) (expr: IR.Expression<'data>) (data: 'data) =
     match decls with
         | [lastDecl] -> IR.Lambda(lastDecl, expr, data)
         | d :: tail -> IR.Lambda(d, lambdaCurry tail expr data, data)
         | _ -> invalidOp "Lambda cannot have empty parameter list"
 
-let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data, Declaration> =
+let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
     let mapLit (lit: Literal<FrontendAst.Expression<'data>>) =
         match lit with
             | List exprs ->
@@ -19,7 +19,7 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data, Declarat
             | Float f -> Float f
             | Bool b -> Bool b
 
-    let rec expandFunctionCalls (funExpr: IR.Expression<'data, Declaration>) (args: FrontendAst.Expression<'data> list) (data: 'data) =
+    let rec expandFunctionCalls (funExpr: IR.Expression<'data>) (args: FrontendAst.Expression<'data> list) (data: 'data) =
         match args with
             | [lastArg] -> IR.Application (funExpr, map lastArg, data)
             | arg :: tail ->
@@ -27,7 +27,7 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data, Declarat
                 expandFunctionCalls nextFun tail data
             | _ -> invalidOp "Function calls must always have at least one argument"
 
-    let rec expandLet (binds: FrontendAst.LetBinding<'data> list) (irExpr: IR.Expression<'data, Declaration>) (data: 'data) = 
+    let rec expandLet (binds: FrontendAst.LetBinding<'data> list) (irExpr: IR.Expression<'data>) (data: 'data) = 
         let (modifier, decl, valueExpr) = List.head binds
         let next = match List.tail binds with
                     | [] -> irExpr

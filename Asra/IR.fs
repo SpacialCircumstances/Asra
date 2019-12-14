@@ -3,24 +3,24 @@
 open AstCommon
 
 [<StructuredFormatDisplay("{AsString}")>]
-type LetExpression<'data, 'decl> = {
-    binding: 'decl
-    value: Expression<'data, 'decl>
-    body: Expression<'data, 'decl>
+type LetExpression<'data> = {
+    binding: Declaration
+    value: Expression<'data>
+    body: Expression<'data>
     data: 'data
 }
 with
     override self.ToString () = sprintf "(Let (%A = %A) In %A @%A)" self.binding self.value self.body self.data
     member self.AsString = self.ToString ()
 
-and [<StructuredFormatDisplay("{AsString}")>] Expression<'data, 'decl> =
-    | Literal of Literal<Expression<'data, 'decl>> * 'data
+and [<StructuredFormatDisplay("{AsString}")>] Expression<'data> =
+    | Literal of Literal<Expression<'data>> * 'data
     | Variable of string * 'data
-    | Application of Expression<'data, 'decl> * Expression<'data, 'decl> * 'data
-    | Lambda of 'decl * Expression<'data, 'decl> * 'data
-    | Let of LetExpression<'data, 'decl>
-    | LetRec of LetExpression<'data, 'decl>
-    | If of Expression<'data, 'decl> * Expression<'data, 'decl> * Expression<'data, 'decl> * 'data
+    | Application of Expression<'data> * Expression<'data> * 'data
+    | Lambda of Declaration * Expression<'data> * 'data
+    | Let of LetExpression<'data>
+    | LetRec of LetExpression<'data>
+    | If of Expression<'data> * Expression<'data> * Expression<'data> * 'data
 with
     override self.ToString () = 
         match self with
@@ -34,7 +34,7 @@ with
 
     member self.AsString = self.ToString ()
 
-let getData (expr: Expression<'data, 'decl>) =
+let getData (expr: Expression<'data>) =
     match expr with
         | Variable (_, data) -> data
         | Literal (_, data) -> data

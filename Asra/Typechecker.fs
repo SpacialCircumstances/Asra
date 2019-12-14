@@ -265,7 +265,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
     let solveAll cs = Seq.fold (fun s c -> 
         Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
 
-    let rec infer (expr: IR.Expression<'data, AstCommon.Declaration>) (mset: Set<Var>): Assumption.Assumption * Constraint<'data> seq * Type = 
+    let rec infer (expr: IR.Expression<'data>) (mset: Set<Var>): Assumption.Assumption * Constraint<'data> seq * Type = 
         match expr with
             | IR.Variable (x, data) ->
                 let tv = fresh ()
@@ -323,7 +323,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 ]
                 (Assumption.mergeMany [ as1; as2; as3 ], Seq.concat [ cs1; cs2; cs3; newCs ], t2)
     
-    let inferType env (expr: IR.Expression<'data, AstCommon.Declaration>): Result<Substitute.Substitution * Type, TypeError<'data>> =
+    let inferType env (expr: IR.Expression<'data>): Result<Substitute.Substitution * Type, TypeError<'data>> =
         let (a, cs, t) = infer expr Set.empty
         let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
         match Set.isEmpty unbounds with
@@ -337,7 +337,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 }
                 solveAll (Seq.append externConstraints cs) |> Result.bind (fun subst -> Ok (subst, Substitute.substType subst t))
 
-    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data, AstCommon.Declaration>) =
+    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) =
         match inferType env expr with
             | Error e -> Error e
             | Ok (subst, t) -> 

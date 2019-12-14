@@ -18,5 +18,5 @@ let withHeader (header: string) (print: (Printf.TextWriterFormat<'a> -> 'a) -> '
 let formatAst: Formatter<FrontendAst.Expression<AstCommon.SourcePosition>> = 
     withHeader "AST" (fun fmt ast -> fmt "%A" ast)
 
-let formatIR: Formatter<IR.Expression<AstCommon.SourcePosition, AstCommon.Declaration>> = 
+let formatIR: Formatter<IR.Expression<AstCommon.SourcePosition>> = 
     withHeader "IR" (fun fmt ir -> fmt "%A" ir)
