@@ -55,7 +55,7 @@ type DataWithType<'data> = {
 
 let getType (expr: IR.Expression<DataWithType<'data>>) = (getData expr).nodeType
 
-module Environment =
+module private Environment =
     let mergeMaps map1 map2 = Map.fold (fun acc key value -> Map.add key value acc) map1 map2
 
     type Env = {
@@ -84,7 +84,7 @@ module Environment =
 
     let toSeq env = Map.toSeq env.types
 
-module Assumption =
+module private Assumption =
     type Assumption = {
         assumptions: (Name * Type) list
     }
@@ -135,7 +135,7 @@ type TypeError<'data> =
     | Ambigious of Constraint<'data> list
     | UnificationMismatch of Type list * Type list
 
-module Substitute =
+module private Substitute =
     type Substitution = Map<Var, Type>
     
     type Substitute<'a> = Substitution -> 'a -> 'a
@@ -154,7 +154,7 @@ module Substitute =
     let substScheme: Substitute<Scheme> = fun s (Scheme (ts, t)) ->
         (ts, substType (List.foldBack Map.remove ts s) t) |> Scheme
 
-module TypeVars =
+module private TypeVars =
     type FreeTypeVars<'a> = 'a -> Set<Var>
 
     type ActiveTypeVars<'a> = 'a -> Set<Var>
@@ -180,7 +180,7 @@ module TypeVars =
 
     let activeMany (l: 'a seq) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
 
-let nameGen () =
+let private nameGen () =
     let varNameCounter = ref 0
     
     let nextName () = 
