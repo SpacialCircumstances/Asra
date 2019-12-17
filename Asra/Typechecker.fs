@@ -203,29 +203,6 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
     let instantiate (Scheme (ts, t)) =
         let s = Map.ofList (List.map (fun o -> o, fresh ()) ts)
         Substitute.substType s t
-
-    let normalize (Scheme (_, body)) = 
-        let rec fv t =
-            match t with
-                | Var a -> [ a ]
-                | Func (t1, t2) -> fv t1 @ fv t2
-                | Primitive _ -> []
-                | Parameterized (_, ts) -> List.collect fv ts 
-
-        let vg = nameGen () |> next
-        let ord = Seq.zip (fv body |> List.distinct) (Seq.initInfinite (fun _ -> vg ())) |> Map.ofSeq
-
-        let rec normtype t =
-            match t with
-                | Primitive x -> Primitive x
-                | Func (t1, t2) -> Func (normtype t1, normtype t2)
-                | Var a -> Map.find a ord
-                | Parameterized (n, ts) -> Parameterized (n, List.map normtype ts)
-        
-        let normed = normtype body
-        (TypeVars.freeType normed |> Set.toList, normed) |> Scheme
-
-    let closeOver (t: Type): Scheme = generalize Set.empty t// |> normalize
     
     let occurs v t = Set.contains v (TypeVars.freeType t)
 
@@ -354,7 +331,37 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 ]
                 (Assumption.mergeMany [ as1; as2; as3 ], Seq.concat [ cs1; cs2; cs3; newCs ], IR.If (e1, e2, e3, typeData data t2))
     
-    let inferType env (expr: IR.Expression<'data>): Result<Substitute.Substitution * IR.Expression<DataWithType<'data>>, TypeError<'data>> =
+    let rec substituteAst (subst: Substitute.Substitution) (expr: IR.Expression<DataWithType<'data>>) =
+        //TODO: Normalize types
+        let substData data = { data with nodeType = Substitute.substType subst data.nodeType }
+
+        match expr with
+            | IR.Variable (x, data) -> IR.Variable (x, substData data)
+            | IR.Lambda (d, e, data) -> IR.Lambda (d, substituteAst subst e, substData data)
+            | IR.Application (f, a, data) -> IR.Application (substituteAst subst f, substituteAst subst a, substData data)
+            | IR.Let l -> 
+                {
+                    value = substituteAst subst l.value
+                    body = substituteAst subst l.body
+                    data = substData l.data
+                    binding = l.binding
+                } |> IR.Let
+            | IR.LetRec l ->
+                {
+                    value = substituteAst subst l.value
+                    body = substituteAst subst l.body
+                    data = substData l.data
+                    binding = l.binding
+                } |> IR.LetRec
+            | IR.Literal (lit, data) ->
+                match lit with
+                    | AstCommon.List exprs ->
+                        (AstCommon.List (List.map (substituteAst subst) exprs), substData data) |> IR.Literal
+                    | _ -> IR.Literal (lit, substData data)
+            | IR.If (condExpr, ifExpr, elseExpr, data) ->
+                IR.If (substituteAst subst condExpr, substituteAst subst ifExpr, substituteAst subst elseExpr, substData data)
+
+    let inferType env (expr: IR.Expression<'data>): Result<IR.Expression<DataWithType<'data>>, TypeError<'data>> =
         let (a, cs, e) = infer expr Set.empty
         let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
         match Set.isEmpty unbounds with
@@ -367,14 +374,11 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                             yield ExpInstConst (t, s, Extern x)
                 }
                 solveAll (Seq.append externConstraints cs) 
-                    |> Result.bind (fun subst -> Ok (subst, e))
+                    |> Result.bind (fun subst -> 
+                        Map.iter (fun k v -> log (sprintf "'%s -> %A" k v)) subst
+                        Ok (substituteAst subst e))
 
-    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) =
-        match inferType env expr with
-            | Error e -> Error e
-            | Ok (subst, typedExpr) -> 
-                Map.iter (fun k v -> log (sprintf "'%s -> %A" k v)) subst
-                Ok (subst, typedExpr)
+    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) = inferType env expr
 
     let rec toType (td: AstCommon.TypeDeclaration) =
         match td with
