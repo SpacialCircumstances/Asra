@@ -42,10 +42,10 @@ let rec map (expr: FrontendAst.Expression<'data>): IR.Expression<'data> =
                     body = next
                 }
             | Some FrontendAst.Recursive ->
-                IR.LetRec {
+                IR.Let {
                     data = data
                     binding = decl
-                    value = irValueExpr
+                    value = IR.Fix irValueExpr
                     body = next
                 }
 
