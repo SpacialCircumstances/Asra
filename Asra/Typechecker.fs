@@ -354,7 +354,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 ]
                 (Assumption.mergeMany [ as1; as2; as3 ], Seq.concat [ cs1; cs2; cs3; newCs ], IR.If (e1, e2, e3, typeData data t2))
     
-    let inferType env (expr: IR.Expression<'data>): Result<Substitute.Substitution * Type, TypeError<'data>> =
+    let inferType env (expr: IR.Expression<'data>): Result<Substitute.Substitution * IR.Expression<DataWithType<'data>>, TypeError<'data>> =
         let (a, cs, e) = infer expr Set.empty
         let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
         match Set.isEmpty unbounds with
@@ -366,14 +366,15 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                         for t in (Assumption.lookup a x) do
                             yield ExpInstConst (t, s, Extern x)
                 }
-                solveAll (Seq.append externConstraints cs) |> Result.bind (fun subst -> Ok (subst, Substitute.substType subst (getType e)))
+                solveAll (Seq.append externConstraints cs) 
+                    |> Result.bind (fun subst -> Ok (subst, e))
 
     let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) =
         match inferType env expr with
             | Error e -> Error e
-            | Ok (subst, t) -> 
+            | Ok (subst, typedExpr) -> 
                 Map.iter (fun k v -> log (sprintf "'%s -> %A" k v)) subst
-                Ok (closeOver (Substitute.substType subst t))
+                Ok (subst, typedExpr)
 
     let rec toType (td: AstCommon.TypeDeclaration) =
         match td with
