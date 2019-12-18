@@ -392,7 +392,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 }
                 solveAll (Seq.append externConstraints cs) 
                     |> Result.bind (fun subst -> 
-                        Map.iter (fun k v -> log (sprintf "'%s -> %A" k v)) subst
+                        Map.iter (fun k v -> log (sprintf "'%s => %A" k v)) subst
                         Ok (substituteAst subst e))
 
     let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) = inferType env expr
