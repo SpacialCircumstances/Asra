@@ -1,5 +1,7 @@
 ﻿module Typechecker
 
+// Adapted and ported from https://github.com/kseo/poly_constraints (MIT License)
+
 open IR
 
 type Primitive =
