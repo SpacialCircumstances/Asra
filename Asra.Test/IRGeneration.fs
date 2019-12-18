@@ -30,10 +30,10 @@ let ``Let`` () =
         data = ()
         binding = Named "x"
         value = IR.Literal (Int 2L, ())
-        body = IR.Let({
+        body = IR.LetRec({
             data = ()
             binding = Named "d"
-            value = IR.Lambda (Named "a", IR.Lambda(Named "b", IR.Variable("a", ()), ()), ()) |> IR.Fix
+            value = IR.Lambda (Named "a", IR.Lambda(Named "b", IR.Variable("a", ()), ()), ())
             body = IR.Variable("t", ())
         })
     })

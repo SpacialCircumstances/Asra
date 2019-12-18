@@ -296,7 +296,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 }
                 (asms, Seq.append (Seq.append cs1 newCs) cs2, IR.Let newLet)
 
-            | IR.Fix e -> invalidOp "Not implemented"
+            | IR.LetRec _ -> invalidOp "Not implemented"
 
             | IR.Literal (lit, data) ->
                 match lit with
@@ -348,7 +348,13 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                     data = substData l.data
                     binding = l.binding
                 } |> IR.Let
-            | IR.Fix e -> substituteAst subst e
+            | IR.LetRec l ->
+                {
+                    value = substituteAst subst l.value
+                    body = substituteAst subst l.body
+                    data = substData l.data
+                    binding = l.binding
+                } |> IR.LetRec
             | IR.Literal (lit, data) ->
                 match lit with
                     | AstCommon.List exprs ->
