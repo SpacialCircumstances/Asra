@@ -1,5 +1,4 @@
 #Fake fibonacci because there is no substraction
 let
-    `-` = fun (a: Int) (b: Int) -> a
-    rec fib = fun n -> (fib (n - 1))
+    rec fib = fun n -> (fib 3)
 in fib 3 end
