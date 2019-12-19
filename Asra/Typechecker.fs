@@ -198,6 +198,19 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
     let nextName = nameGen ()
     let fresh = next nextName
 
+    let rec toType (td: AstCommon.TypeDeclaration) =
+        match td with
+            | AstCommon.Name "Int" -> Primitive Int
+            | AstCommon.Name "String" -> Primitive String
+            | AstCommon.Name "Float" -> Primitive Float
+            | AstCommon.Name "Bool" -> Primitive Bool
+            | AstCommon.Name "Unit" -> Primitive Unit
+            | AstCommon.Name _ -> fresh () //TODO
+            | AstCommon.Generic _ -> fresh () //TODO
+            | AstCommon.Function (itd, otd) -> Func (toType itd, toType otd)
+            | AstCommon.Parameterized (name, parameters) ->
+                Parameterized (name, List.map toType parameters)
+
     let generalize (vars: Set<Var>) (t: Type): Scheme =
         let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
         (ts, t) |> Scheme
@@ -264,10 +277,15 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 let a = nextName ()
                 let tv = Var a
                 let (asm, cs, subExpr) = infer e (Set.add a mset)
-                let name = AstCommon.getName d
+                let lambdaType = Func (tv, getType subExpr)
+                let name, ta = match d with
+                                | AstCommon.Named n -> n, Seq.empty
+                                | AstCommon.TypeAnnotated (n, t) -> 
+                                    let annotatedType = toType t
+                                    n, Seq.singleton (EqConst (tv, annotatedType, ExprOrigin ("Lambda type annotation", data)))
                 let orig = ("Lambda", data) |> ExprOrigin
                 let newCs = Seq.map (fun ts -> EqConst (ts, tv, orig)) (Assumption.lookup asm name)
-                (Assumption.remove asm (AstCommon.getName d), (Seq.append cs newCs), IR.Lambda (d, subExpr, typeData data (Func (tv, getType subExpr))))
+                (Assumption.remove asm (AstCommon.getName d), (Seq.concat [ cs; ta ;newCs]), IR.Lambda (d, subExpr, typeData data lambdaType))
 
             | IR.Application (f, a, data) ->
                 let (as1, cs1, e1) = infer f mset
@@ -398,19 +416,6 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                         Ok (substituteAst subst e))
 
     let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) = inferType env expr
-
-    let rec toType (td: AstCommon.TypeDeclaration) =
-        match td with
-            | AstCommon.Name "Int" -> Primitive Int
-            | AstCommon.Name "String" -> Primitive String
-            | AstCommon.Name "Float" -> Primitive Float
-            | AstCommon.Name "Bool" -> Primitive Bool
-            | AstCommon.Name "Unit" -> Primitive Unit
-            | AstCommon.Name _ -> fresh () //TODO
-            | AstCommon.Generic _ -> fresh () //TODO
-            | AstCommon.Function (itd, otd) -> Func (toType itd, toType otd)
-            | AstCommon.Parameterized (name, parameters) ->
-                Parameterized (name, List.map toType parameters)
 
     let initialContext = Environment.fromSeq (Seq.map (fun (n, td) -> n, toType td |> generalize Set.empty) (Map.toSeq initialTypes))
 
