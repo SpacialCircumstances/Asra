@@ -297,13 +297,15 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 (asms, Seq.append (Seq.append cs1 newCs) cs2, IR.Let newLet)
 
             | IR.LetRec l ->
+                //TODO: Fix this?
                 let (as1, cs1, e1) = infer l.value mset
                 let (as2, cs2, e2) = infer l.body mset
                 let t1 = getType e1
                 let t2 = getType e2
                 let x = AstCommon.getName l.binding
-                let asms = Assumption.merge as1 (Assumption.remove as2 x)
+                let asms = Assumption.merge (Assumption.remove as1 x) (Assumption.remove as2 x)
                 let orig = ("LetRec", l.data) |> ExprOrigin
+                let newCs1 = Seq.map (fun ts -> EqConst (ts, t1, orig)) (Assumption.lookup as1 x)
                 let newCs = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 x)
                 let newLet = {
                     binding = l.binding
@@ -311,7 +313,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                     body = e2
                     data = typeData l.data t2
                 }
-                (asms, Seq.append (Seq.append cs1 newCs) cs2, IR.LetRec newLet)
+                (asms, cs1 |> Seq.append newCs1 |> Seq.append newCs |> Seq.append cs2, IR.LetRec newLet)
 
             | IR.Literal (lit, data) ->
                 match lit with
