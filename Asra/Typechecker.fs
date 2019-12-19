@@ -331,7 +331,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                     body = e2
                     data = typeData l.data t2
                 }
-                (asms, cs1 |> Seq.append newCs1 |> Seq.append newCs |> Seq.append cs2, IR.LetRec newLet)
+                (asms, Seq.concat [ cs1; newCs1; newCs; cs2 ], IR.LetRec newLet)
 
             | IR.Literal (lit, data) ->
                 match lit with
