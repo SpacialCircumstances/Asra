@@ -302,17 +302,19 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 let (as2, cs2, e2) = infer l.body mset
                 let t1 = getType e1
                 let t2 = getType e2
-                let x = AstCommon.getName l.binding
-                let asms = Assumption.merge as1 (Assumption.remove as2 x)
                 let orig = ("Let", l.data) |> ExprOrigin
-                let newCs = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 x)
+                let name, ta = match l.binding with
+                                    | AstCommon.Named n -> n, Seq.empty
+                                    | AstCommon.TypeAnnotated (n, td) -> n, Seq.singleton (EqConst (t1, toType td, orig))
+                let asms = Assumption.merge as1 (Assumption.remove as2 name)
+                let bindingConstraints = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 name)
                 let newLet = {
                     binding = l.binding
                     value = e1
                     body = e2
                     data = typeData l.data t2
                 }
-                (asms, Seq.append (Seq.append cs1 newCs) cs2, IR.Let newLet)
+                (asms, Seq.concat [ cs1; ta; bindingConstraints; cs2 ], IR.Let newLet)
 
             | IR.LetRec l ->
                 //TODO: Fix this?
@@ -320,18 +322,20 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 let (as2, cs2, e2) = infer l.body mset
                 let t1 = getType e1
                 let t2 = getType e2
-                let x = AstCommon.getName l.binding
-                let asms = Assumption.merge (Assumption.remove as1 x) (Assumption.remove as2 x)
                 let orig = ("LetRec", l.data) |> ExprOrigin
-                let newCs1 = Seq.map (fun ts -> EqConst (ts, t1, orig)) (Assumption.lookup as1 x)
-                let newCs = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 x)
+                let name, ta = match l.binding with
+                                | AstCommon.Named n -> n, Seq.empty
+                                | AstCommon.TypeAnnotated (n, td) -> n, Seq.singleton (EqConst (t1, toType td, orig))
+                let asms = Assumption.merge (Assumption.remove as1 name) (Assumption.remove as2 name)
+                let recursiveConstraints = Seq.map (fun ts -> EqConst (ts, t1, orig)) (Assumption.lookup as1 name)
+                let bindingConstraints = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 name)
                 let newLet = {
                     binding = l.binding
                     value = e1
                     body = e2
                     data = typeData l.data t2
                 }
-                (asms, Seq.concat [ cs1; newCs1; newCs; cs2 ], IR.LetRec newLet)
+                (asms, Seq.concat [ cs1; recursiveConstraints; ta; bindingConstraints; cs2 ], IR.LetRec newLet)
 
             | IR.Literal (lit, data) ->
                 match lit with
