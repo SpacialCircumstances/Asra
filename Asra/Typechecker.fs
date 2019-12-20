@@ -264,7 +264,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 solve subst (ExpInstConst (t1, generalize ms toGen, orig))
 
     let solveAll cs = Seq.fold (fun s c -> 
-        Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
+        Result.bind (fun subst -> solve subst c |> Result.mapError (fun e -> e, subst)) s) (Ok Map.empty) cs
 
     let rec infer (expr: IR.Expression<'data>) (ctx: Context): Assumption.Assumption * Constraint<'data> seq * IR.Expression<TempTypeData<'data>> = 
         let typeData data tp = {
@@ -433,12 +433,16 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                         for t in (Assumption.lookup a x) do
                             yield ExpInstConst (t, s, Extern x)
                 }
-                solveAll (Seq.append externConstraints cs) 
-                    |> Result.bind (fun subst -> 
+                match solveAll (Seq.append externConstraints cs) with
+                    | Ok subst ->
                         Map.iter (fun k v -> log (sprintf "'%s => %A" k v)) subst
-                        Ok (substituteAst subst e))
+                        Ok (substituteAst subst e)
+                    | Error (e, subst) ->
+                        Map.iter (fun k v -> log (sprintf "'%s => %A" k v)) subst
+                        Error e
 
-    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) = inferType env expr
+    let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) = 
+        inferType env expr
 
     let initialContext = Environment.fromSeq (Seq.map (fun (n, td) -> n, fst (toType td emptyContext) |> generalize Set.empty) (Map.toSeq initialTypes))
 
