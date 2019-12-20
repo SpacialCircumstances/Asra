@@ -1,4 +1,4 @@
-﻿module IRGeneration
+﻿module IRGenerationTests
 
 open Asserts
 open AstCommon
