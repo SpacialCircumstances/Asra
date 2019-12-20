@@ -41,7 +41,7 @@ with
                     | _ -> sprintf "%O -> %O" input output
     member self.AsString = self.ToString()
     
-type [<StructuredFormatDisplay("{AsString}")>] private Scheme = 
+type [<StructuredFormatDisplay("{AsString}")>] Scheme = 
     | Scheme of (Var list) * Type
 with
     override self.ToString () = 
@@ -52,12 +52,20 @@ with
 
     member self.AsString = self.ToString ()
 
-type DataWithType<'data> = {
+type private TempTypeData<'data> = {
     nodeData: 'data
     nodeType: Type
+    mset: Set<Var>
 }
 
-let getType (expr: IR.Expression<DataWithType<'data>>) = (getData expr).nodeType
+let private getType (expr: IR.Expression<TempTypeData<'data>>) = (getData expr).nodeType
+
+type DataWithType<'data> = {
+    nodeData: 'data
+    nodeType: Scheme
+}
+
+let getExprType (expr: IR.Expression<DataWithType<'data>>) = (getData expr).nodeType
 
 module private Environment =
     type Env = {
@@ -258,10 +266,11 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
     let solveAll cs = Seq.fold (fun s c -> 
         Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
 
-    let rec infer (expr: IR.Expression<'data>) (ctx: Context): Assumption.Assumption * Constraint<'data> seq * IR.Expression<DataWithType<'data>> = 
+    let rec infer (expr: IR.Expression<'data>) (ctx: Context): Assumption.Assumption * Constraint<'data> seq * IR.Expression<TempTypeData<'data>> = 
         let typeData data tp = {
             nodeData = data
             nodeType = tp
+            mset = ctx.mset
         }
         
         match expr with
@@ -382,9 +391,12 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 ]
                 (Assumption.mergeMany [ as1; as2; as3 ], Seq.concat [ cs1; cs2; cs3; newCs ], IR.If (e1, e2, e3, typeData data t2))
     
-    let rec substituteAst (subst: Substitute.Substitution) (expr: IR.Expression<DataWithType<'data>>) =
+    let rec substituteAst (subst: Substitute.Substitution) (expr: IR.Expression<TempTypeData<'data>>) =
         //TODO: Normalize types
-        let substData data = { data with nodeType = Substitute.substType subst data.nodeType }
+        let substData (data: TempTypeData<'data>) = { 
+            nodeData = data.nodeData
+            nodeType = Substitute.substType subst data.nodeType |> generalize data.mset
+        }
 
         match expr with
             | IR.Variable (x, data) -> IR.Variable (x, substData data)
@@ -405,10 +417,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                     binding = l.binding
                 } |> IR.LetRec
             | IR.Literal (lit, data) ->
-                match lit with
-                    | AstCommon.List exprs ->
-                        (AstCommon.List (List.map (substituteAst subst) exprs), substData data) |> IR.Literal
-                    | _ -> IR.Literal (lit, substData data)
+                IR.Literal (AstCommon.mapLiteral (substituteAst subst) lit, substData data)
             | IR.If (condExpr, ifExpr, elseExpr, data) ->
                 IR.If (substituteAst subst condExpr, substituteAst subst ifExpr, substituteAst subst elseExpr, substData data)
 

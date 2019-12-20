@@ -29,7 +29,7 @@ let runCode (args: Arguments) (code: string) =
         do args.formatIR ir
         let tc = Typechecker.createContext Prelude.context args.log
         let! typedIR =  tc ir |> Result.mapError TypecheckError
-        return Typechecker.getType typedIR
+        return Typechecker.getExprType typedIR
     }
 
     match replResult with

@@ -19,5 +19,5 @@ let ``id function`` () =
         let ir = IRGenerator.map ast
         let tc = Typechecker.createContext Map.empty testLog
         let! pt = tc ir |> Result.mapError TypeError
-        return getType pt
-    } |> assertEqResult (Func (Var "t0", Var "t0"))
+        return getExprType pt
+    } |> assertEqResult (Scheme (["t0"], (Func (Var "t0", Var "t0"))))

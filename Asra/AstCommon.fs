@@ -19,6 +19,15 @@ with
             | List exprs -> sprintf "[%s]" (System.String.Join("; ", exprs))
     member self.AsString = self.ToString ()
 
+let mapLiteral (mapper: 'e1 -> 'e2) (lit: Literal<'e1>) =
+    match lit with
+        | Float f -> Float f
+        | Int i -> Int i
+        | Bool b -> Bool b
+        | String s -> String s
+        | Unit -> Unit
+        | List exprs -> List (List.map mapper exprs)
+
 [<StructuredFormatDisplay("{filename}:{line}:{col}")>]
 type SourcePosition = {
     line: int

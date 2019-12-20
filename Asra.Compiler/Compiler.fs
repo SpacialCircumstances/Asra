@@ -19,7 +19,7 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.formatIR ir
         let tc = Typechecker.createContext Prelude.context args.log
         let! typedIR = tc ir |> Result.mapError TypecheckError
-        let programType = Typechecker.getType typedIR
+        let programType = Typechecker.getExprType typedIR
         do args.log (sprintf "Program type: %A" programType)
         return "Compilation finished"
     }
