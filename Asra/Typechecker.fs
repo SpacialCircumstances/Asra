@@ -93,8 +93,6 @@ module private Assumption =
     
     let empty = { assumptions = [] }
 
-    let extend assumption (name, tp) = { assumptions = (name, tp) :: assumption.assumptions }
-
     let remove assumption name = { assumptions = List.filter (fun (n, _) -> n <> name) assumption.assumptions }
 
     let lookup assumption name = List.filter (fun (n, _) -> n = name) assumption.assumptions |> List.map snd
@@ -141,8 +139,6 @@ module private Substitute =
     
     type Substitute<'a> = Substitution -> 'a -> 'a
 
-    let substMany = fun s (l: 'a seq) (f: Substitute<'a>) -> Seq.map (f s) l
-
     let rec substType: Substitute<Type> = fun s t ->
         match t with
             | Primitive a -> Primitive a
@@ -152,34 +148,15 @@ module private Substitute =
             | Func (t1, t2) -> Func (substType s t1, substType s t2)
             | Parameterized (n, ts) -> Parameterized (n, List.map (substType s) ts)
 
-    let substScheme: Substitute<Scheme> = fun s (Scheme (ts, t)) ->
-        (ts, substType (List.foldBack Map.remove ts s) t) |> Scheme
 
-module private TypeVars =
-    type FreeTypeVars<'a> = 'a -> Set<Var>
+type private FreeTypeVars<'a> = 'a -> Set<Var>
 
-    type ActiveTypeVars<'a> = 'a -> Set<Var>
-
-    let freeMany (l: 'a seq) (f: FreeTypeVars<'a>) = Set.unionMany (Seq.map f l)
-
-    let freeSet (s: Set<'a>) (f: FreeTypeVars<'a>) = Set.unionMany (Seq.map f (Set.toSeq s))
-
-    let rec freeType: FreeTypeVars<Type> = fun t ->
-        match t with
-            | Primitive _ -> Set.empty
-            | Var a -> Set.singleton a
-            | Func (t1, t2) -> Set.union (freeType t1) (freeType t2)
-            | Parameterized (n, ts) -> Set.unionMany (List.map freeType ts) 
-
-    let freeScheme: FreeTypeVars<Scheme> = fun (Scheme (ts, t)) -> Set.difference (freeType t) (Set.ofList ts)
-
-    let activeConstraint: ActiveTypeVars<Constraint<'data>> = fun c ->
-        match c with
-            | EqConst (t1, t2, _) -> Set.union (freeType t1) (freeType t2)
-            | ExpInstConst (t, s, _) -> Set.union (freeType t) (freeScheme s)
-            | ImpInstConst (t1, m, t2, _) -> Set.union (freeType t1) (Set.intersect m (freeType t2))
-
-    let activeMany (l: 'a seq) (f: ActiveTypeVars<'a>) = Set.unionMany (Seq.map f l)
+let rec private freeType: FreeTypeVars<Type> = fun t ->
+    match t with
+        | Primitive _ -> Set.empty
+        | Var a -> Set.singleton a
+        | Func (t1, t2) -> Set.union (freeType t1) (freeType t2)
+        | Parameterized (n, ts) -> Set.unionMany (List.map freeType ts) 
 
 let private nameGen () =
     let varNameCounter = ref 0
@@ -230,14 +207,14 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 Parameterized (name, typedParams), gm
                 
     let generalize (vars: Set<Var>) (t: Type): Scheme =
-        let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
+        let ts = Set.toList (Set.difference (freeType t) vars)
         (ts, t) |> Scheme
 
     let instantiate (Scheme (ts, t)) =
         let s = Map.ofList (List.map (fun o -> o, fresh ()) ts)
         Substitute.substType s t
     
-    let occurs v t = Set.contains v (TypeVars.freeType t)
+    let occurs v t = Set.contains v (freeType t)
 
     let rec unify t1 t2 subst =
         let bind v t =
