@@ -15,6 +15,8 @@ type Var = string
 
 type Name = string
 
+let mergeMaps map1 map2 = Map.fold (fun acc key value -> Map.add key value acc) map1 map2
+
 [<StructuredFormatDisplay("{AsString}")>]
 type Type =
     | Primitive of Primitive
@@ -58,8 +60,6 @@ type DataWithType<'data> = {
 let getType (expr: IR.Expression<DataWithType<'data>>) = (getData expr).nodeType
 
 module private Environment =
-    let mergeMaps map1 map2 = Map.fold (fun acc key value -> Map.add key value acc) map1 map2
-
     type Env = {
         types: Map<Name, Scheme>
     }
@@ -194,23 +194,42 @@ let private nameGen () =
 
 let next n = fun () -> n () |> Var
 
+type Context = {
+    mset: Set<Var>
+    genericsMap: Map<string, Type>
+}
+
+let emptyContext = {
+    mset = Set.empty
+    genericsMap = Map.empty
+}
+
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: string -> unit) =
     let nextName = nameGen ()
     let fresh = next nextName
 
-    let rec toType (td: AstCommon.TypeDeclaration) =
+    let rec toType (td: AstCommon.TypeDeclaration) (context: Context) =
         match td with
-            | AstCommon.Name "Int" -> Primitive Int
-            | AstCommon.Name "String" -> Primitive String
-            | AstCommon.Name "Float" -> Primitive Float
-            | AstCommon.Name "Bool" -> Primitive Bool
-            | AstCommon.Name "Unit" -> Primitive Unit
-            | AstCommon.Name _ -> fresh () //TODO
-            | AstCommon.Generic _ -> fresh () //TODO
-            | AstCommon.Function (itd, otd) -> Func (toType itd, toType otd)
+            | AstCommon.Name "Int" -> Primitive Int, context
+            | AstCommon.Name "String" -> Primitive String, context
+            | AstCommon.Name "Float" -> Primitive Float, context
+            | AstCommon.Name "Bool" -> Primitive Bool, context
+            | AstCommon.Name "Unit" -> Primitive Unit, context
+            | AstCommon.Name _ -> fresh (), context
+            | AstCommon.Generic a -> 
+                match Map.tryFind a context.genericsMap with
+                    | None ->
+                        let tp = fresh ()
+                        tp, { context with genericsMap =  Map.add a tp context.genericsMap }
+                    | Some t -> t, context
+            | AstCommon.Function (itd, otd) -> 
+                let it, ctx1 = toType itd context
+                let ot, ctx2 = toType itd ctx1
+                Func (it, ot), ctx2
             | AstCommon.Parameterized (name, parameters) ->
-                Parameterized (name, List.map toType parameters)
-
+                let typedParams, gm = List.mapFold (fun gm p -> toType p gm) context parameters
+                Parameterized (name, typedParams), gm
+                
     let generalize (vars: Set<Var>) (t: Type): Scheme =
         let ts = Set.toList (Set.difference (TypeVars.freeType t) vars)
         (ts, t) |> Scheme
@@ -263,7 +282,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
     let solveAll cs = Seq.fold (fun s c -> 
         Result.bind (fun subst -> solve subst c) s) (Ok Map.empty) cs
 
-    let rec infer (expr: IR.Expression<'data>) (mset: Set<Var>): Assumption.Assumption * Constraint<'data> seq * IR.Expression<DataWithType<'data>> = 
+    let rec infer (expr: IR.Expression<'data>) (ctx: Context): Assumption.Assumption * Constraint<'data> seq * IR.Expression<DataWithType<'data>> = 
         let typeData data tp = {
             nodeData = data
             nodeType = tp
@@ -276,20 +295,24 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
             | IR.Lambda (d, e, data) ->
                 let a = nextName ()
                 let tv = Var a
-                let (asm, cs, subExpr) = infer e (Set.add a mset)
+                let name, ta, newCtx = 
+                    match d with
+                        | AstCommon.Named n -> n, None, ctx
+                        | AstCommon.TypeAnnotated (n, t) -> 
+                            let annotatedType, ctx = toType t ctx
+                            n, Some annotatedType, ctx
+                let (asm, cs, subExpr) = infer e { newCtx with mset = Set.add a ctx.mset }
+                let taConstraints = match ta with
+                                        | None -> Seq.empty
+                                        | Some annotatedType -> Seq.singleton (EqConst (tv, annotatedType, ExprOrigin ("Lambda type annotation", data)))
                 let lambdaType = Func (tv, getType subExpr)
-                let name, ta = match d with
-                                | AstCommon.Named n -> n, Seq.empty
-                                | AstCommon.TypeAnnotated (n, t) -> 
-                                    let annotatedType = toType t
-                                    n, Seq.singleton (EqConst (tv, annotatedType, ExprOrigin ("Lambda type annotation", data)))
                 let orig = ("Lambda", data) |> ExprOrigin
                 let newCs = Seq.map (fun ts -> EqConst (ts, tv, orig)) (Assumption.lookup asm name)
-                (Assumption.remove asm (AstCommon.getName d), (Seq.concat [ cs; ta ;newCs]), IR.Lambda (d, subExpr, typeData data lambdaType))
+                (Assumption.remove asm (AstCommon.getName d), (Seq.concat [ cs; taConstraints ;newCs]), IR.Lambda (d, subExpr, typeData data lambdaType))
 
             | IR.Application (f, a, data) ->
-                let (as1, cs1, e1) = infer f mset
-                let (as2, cs2, e2) = infer a mset
+                let (as1, cs1, e1) = infer f ctx
+                let (as2, cs2, e2) = infer a ctx
                 let t1 = getType e1
                 let t2 = getType e2
                 let tv = fresh ()
@@ -298,44 +321,55 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 (Assumption.merge as1 as2, Seq.append (Seq.append cs1 cs2) [ newCs ], IR.Application (e1, e2, typeData data tv))
 
             | IR.Let l ->
-                let (as1, cs1, e1) = infer l.value mset
-                let (as2, cs2, e2) = infer l.body mset
+                let orig = ("Let", l.data) |> ExprOrigin
+                let name, ta, newCtx = 
+                    match l.binding with
+                        | AstCommon.Named n -> n, None, ctx
+                        | AstCommon.TypeAnnotated (n, t) -> 
+                            let annotatedType, ctx = toType t ctx
+                            n, Some annotatedType, ctx
+                let (as1, cs1, e1) = infer l.value newCtx
+                let (as2, cs2, e2) = infer l.body newCtx
                 let t1 = getType e1
                 let t2 = getType e2
-                let orig = ("Let", l.data) |> ExprOrigin
-                let name, ta = match l.binding with
-                                    | AstCommon.Named n -> n, Seq.empty
-                                    | AstCommon.TypeAnnotated (n, td) -> n, Seq.singleton (EqConst (t1, toType td, orig))
+                let taConstraints = match ta with
+                                    | None -> Seq.empty
+                                    | Some typeAnnotation -> Seq.singleton (EqConst (t1, typeAnnotation, orig))
                 let asms = Assumption.merge as1 (Assumption.remove as2 name)
-                let bindingConstraints = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 name)
+                let bindingConstraints = Seq.map (fun ts -> ImpInstConst (ts, ctx.mset, t1, orig)) (Assumption.lookup as2 name)
                 let newLet = {
                     binding = l.binding
                     value = e1
                     body = e2
                     data = typeData l.data t2
                 }
-                (asms, Seq.concat [ cs1; ta; bindingConstraints; cs2 ], IR.Let newLet)
+                (asms, Seq.concat [ cs1; taConstraints; bindingConstraints; cs2 ], IR.Let newLet)
 
             | IR.LetRec l ->
-                //TODO: Fix this?
-                let (as1, cs1, e1) = infer l.value mset
-                let (as2, cs2, e2) = infer l.body mset
+                let orig = ("LetRec", l.data) |> ExprOrigin
+                let name, ta, newCtx = 
+                    match l.binding with
+                        | AstCommon.Named n -> n, None, ctx
+                        | AstCommon.TypeAnnotated (n, t) -> 
+                            let annotatedType, ctx = toType t ctx
+                            n, Some annotatedType, ctx
+                let (as1, cs1, e1) = infer l.value newCtx
+                let (as2, cs2, e2) = infer l.body newCtx
                 let t1 = getType e1
                 let t2 = getType e2
-                let orig = ("LetRec", l.data) |> ExprOrigin
-                let name, ta = match l.binding with
-                                | AstCommon.Named n -> n, Seq.empty
-                                | AstCommon.TypeAnnotated (n, td) -> n, Seq.singleton (EqConst (t1, toType td, orig))
-                let asms = Assumption.merge (Assumption.remove as1 name) (Assumption.remove as2 name)
-                let recursiveConstraints = Seq.map (fun ts -> EqConst (ts, t1, orig)) (Assumption.lookup as1 name)
-                let bindingConstraints = Seq.map (fun ts -> ImpInstConst (ts, mset, t1, orig)) (Assumption.lookup as2 name)
+                let taConstraints = match ta with
+                                    | None -> Seq.empty
+                                    | Some typeAnnotation -> Seq.singleton (EqConst (t1, typeAnnotation, orig))
+                let asms = Assumption.merge as1 (Assumption.remove as2 name)
+                let bindingConstraints = Seq.map (fun ts -> ImpInstConst (ts, ctx.mset, t1, orig)) (Assumption.lookup as2 name)
                 let newLet = {
                     binding = l.binding
                     value = e1
                     body = e2
                     data = typeData l.data t2
                 }
-                (asms, Seq.concat [ cs1; recursiveConstraints; ta; bindingConstraints; cs2 ], IR.LetRec newLet)
+                let recursiveConstraints = Seq.map (fun ts -> EqConst (ts, t1, orig)) (Assumption.lookup as1 name)
+                (asms, Seq.concat [ cs1; recursiveConstraints; taConstraints; bindingConstraints; cs2 ], IR.LetRec newLet)
 
             | IR.Literal (lit, data) ->
                 match lit with
@@ -352,16 +386,16 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                     | AstCommon.List exprs -> 
                         let pvar = fresh ()
                         let (assumptions, constraints, subExprs) = Seq.fold (fun (a, c, exprList) expr ->
-                            let (newAs, newCs, subExpr) = infer expr mset
+                            let (newAs, newCs, subExpr) = infer expr ctx
                             let exprT = getType subExpr
                             let newCs = Seq.append newCs (EqConst (pvar, exprT, ExprOrigin ("List", data)) |> Seq.singleton)
                             (Assumption.merge a newAs, Seq.append c newCs, subExpr :: exprList)) (Assumption.empty, Seq.empty, []) exprs
                         let exprType =  Parameterized ("List", [ pvar ])
                         assumptions, constraints, (AstCommon.List subExprs, typeData data exprType) |> IR.Literal
             | IR.If (cond, ifExpr, elseExpr, data) ->
-                let (as1, cs1, e1) = infer cond mset
-                let (as2, cs2, e2) = infer ifExpr mset
-                let (as3, cs3, e3) = infer elseExpr mset
+                let (as1, cs1, e1) = infer cond ctx
+                let (as2, cs2, e2) = infer ifExpr ctx
+                let (as3, cs3, e3) = infer elseExpr ctx
                 let t1 = getType e1
                 let t2 = getType e2
                 let t3 = getType e3
@@ -403,7 +437,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 IR.If (substituteAst subst condExpr, substituteAst subst ifExpr, substituteAst subst elseExpr, substData data)
 
     let inferType env (expr: IR.Expression<'data>): Result<IR.Expression<DataWithType<'data>>, TypeError<'data>> =
-        let (a, cs, e) = infer expr Set.empty
+        let (a, cs, e) = infer expr emptyContext
         let unbounds = Set.difference (Set.ofList (Assumption.keys a)) (Set.ofSeq (Environment.keys env))
         match Set.isEmpty unbounds with
             | false -> UnboundVariable (Set.minElement unbounds) |> Error
@@ -421,6 +455,6 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
 
     let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) = inferType env expr
 
-    let initialContext = Environment.fromSeq (Seq.map (fun (n, td) -> n, toType td |> generalize Set.empty) (Map.toSeq initialTypes))
+    let initialContext = Environment.fromSeq (Seq.map (fun (n, td) -> n, fst (toType td emptyContext) |> generalize Set.empty) (Map.toSeq initialTypes))
 
     inferExpr initialContext
