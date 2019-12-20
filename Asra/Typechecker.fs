@@ -15,7 +15,7 @@ type Var = string
 
 type Name = string
 
-let mergeMaps map1 map2 = Map.fold (fun acc key value -> Map.add key value acc) map1 map2
+let private mergeMaps map1 map2 = Map.fold (fun acc key value -> Map.add key value acc) map1 map2
 
 [<StructuredFormatDisplay("{AsString}")>]
 type Type =
@@ -41,7 +41,7 @@ with
                     | _ -> sprintf "%O -> %O" input output
     member self.AsString = self.ToString()
     
-type [<StructuredFormatDisplay("{AsString}")>] Scheme = 
+type [<StructuredFormatDisplay("{AsString}")>] private Scheme = 
     | Scheme of (Var list) * Type
 with
     override self.ToString () = 
@@ -110,7 +110,7 @@ module private Assumption =
 
     let keys assumption = List.map fst assumption.assumptions
 
-type [<StructuredFormatDisplay("{AsString}")>] ConstraintOrigin<'data> =
+type [<StructuredFormatDisplay("{AsString}")>] private ConstraintOrigin<'data> =
     | ExprOrigin of string * 'data
     | Extern of Name
 with
@@ -119,7 +119,7 @@ with
                                 | Extern name -> sprintf "Extern: %s" name
     member self.AsString = self.ToString ()
 
-type [<StructuredFormatDisplay("{AsString}")>] Constraint<'data> =
+type [<StructuredFormatDisplay("{AsString}")>] private Constraint<'data> =
     | EqConst of Type * Type * ConstraintOrigin<'data>
     | ExpInstConst of Type * Scheme * ConstraintOrigin<'data>
     | ImpInstConst of Type * Set<Var> * Type * ConstraintOrigin<'data>
@@ -134,7 +134,6 @@ type TypeError<'data> =
     | UnificationFail of Type * Type
     | InfiniteType of Var * Type
     | UnboundVariable of string
-    | Ambigious of Constraint<'data> list
     | UnificationMismatch of Type list * Type list
 
 module private Substitute =
@@ -192,14 +191,14 @@ let private nameGen () =
 
     nextName
 
-let next n = fun () -> n () |> Var
+let private next n = fun () -> n () |> Var
 
-type Context = {
+type private Context = {
     mset: Set<Var>
     genericsMap: Map<string, Type>
 }
 
-let emptyContext = {
+let private emptyContext = {
     mset = Set.empty
     genericsMap = Map.empty
 }
