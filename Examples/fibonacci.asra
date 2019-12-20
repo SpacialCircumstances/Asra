@@ -1,4 +1,0 @@
-#Fake fibonacci because there is no substraction
-let
-    rec fib = fun n -> (fib 3)
-in fib 3 end
