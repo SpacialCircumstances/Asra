@@ -360,7 +360,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 let taConstraints = match ta with
                                     | None -> Seq.empty
                                     | Some typeAnnotation -> Seq.singleton (EqConst (t1, typeAnnotation, orig))
-                let asms = Assumption.merge as1 (Assumption.remove as2 name)
+                let asms = Assumption.merge (Assumption.remove as1 name) (Assumption.remove as2 name)
                 let bindingConstraints = Seq.map (fun ts -> ImpInstConst (ts, ctx.mset, t1, orig)) (Assumption.lookup as2 name)
                 let newLet = {
                     binding = l.binding
