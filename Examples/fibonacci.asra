@@ -1,7 +1,7 @@
 let
     `==` = fun a b -> true
-    `-` = fun (a: Int) (b: Int) -> a
-    `+` = fun (a: Int) (b: Int) -> b
+    (`-`: Int -> Int -> Int) = fun a b -> a
+    (`+`: Int -> Int -> Int) = fun a b -> b
     rec fib = fun n -> 
         if (n == 1) then 0 else (if (n == 2) then 1 else (
             let 
