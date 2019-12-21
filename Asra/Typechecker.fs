@@ -125,16 +125,10 @@ with
                                 | Extern name -> sprintf "Extern: %s" name
     member self.AsString = self.ToString ()
 
-type [<StructuredFormatDisplay("{AsString}")>] private Constraint<'data> =
+type private Constraint<'data> =
     | EqConst of Type * Type * ConstraintOrigin<'data>
     | ExpInstConst of Type * Scheme * ConstraintOrigin<'data>
     | ImpInstConst of Type * Set<Var> * Type * ConstraintOrigin<'data>
-with
-    override self.ToString () = match self with
-                                    | EqConst (t1, t2, orig) -> sprintf "%A = %A (%A)" t1 t2 orig
-                                    | ImpInstConst (t1, m, t2, orig) -> sprintf "%A = %A (%A) (%A)" t1 t2 m orig
-                                    | ExpInstConst (t1, s, orig) -> sprintf "%A = %A (%A)" t1 s orig
-    member self.AsString = self.ToString ()
 
 type TypeError<'data> =
     | UnificationFail of Type * Type
@@ -253,18 +247,23 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
 
     let rec solve subst c =
         match c with
-            | EqConst (t1, t2, _) ->
-                log (sprintf "Solving: %A" c)
-                unify t1 t2 subst
+            | EqConst (t1, t2, orig) ->
+                log (sprintf "Solving: %A = %A (%A)" t1 t2 orig)
+                let s1 = Substitute.substType subst t1
+                let s2 = Substitute.substType subst t2
+                log (sprintf "Solving (subtituted): %A = %A (%A)" s1 s2 orig)
+                unify s1 s2 subst
             | ExpInstConst (t, s, orig) ->
                 let s' = instantiate s
-                log (sprintf "Instantiating: %A" c)
+                log (sprintf "Instantiating: %A = %A (%A)" t s orig)
                 solve subst (EqConst (t, s', orig))
             | ImpInstConst (t1, ms, t2, orig) ->
-                let toGen = Substitute.substType subst t2
-                let vs = (Substitute.substVarSet subst ms)
-                log (sprintf "Generalizing: %A" c)
-                solve subst (ExpInstConst (t1, generalize vs toGen, orig))
+                log (sprintf "Generalizing: %A = %A (%A) (%A)" t1 t2 ms orig)
+                let vs = Substitute.substVarSet subst ms
+                let s1 = Substitute.substType subst t1
+                let s2 = Substitute.substType subst t2
+                log (sprintf "Generalizing (substituted): %A = %A (%A) (%A)" s1 s2 vs orig)
+                solve subst (ExpInstConst (s1, generalize vs s2, orig))
 
     let solveAll cs = Seq.fold (fun s c -> 
         Result.bind (fun subst -> solve subst c |> Result.mapError (fun e -> e, subst)) s) (Ok Map.empty) cs
