@@ -295,7 +295,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 let lambdaType = Func (tv, getType subExpr)
                 let orig = ("Lambda", data) |> ExprOrigin
                 let newCs = Seq.map (fun ts -> EqConst (ts, tv, orig)) (Assumption.lookup asm name)
-                (Assumption.remove asm (AstCommon.getName d), (Seq.concat [ cs; taConstraints ;newCs]), IR.Lambda (d, subExpr, typeData data lambdaType))
+                (Assumption.remove asm (AstCommon.getName d), (Seq.concat [ newCs; taConstraints; cs]), IR.Lambda (d, subExpr, typeData data lambdaType))
 
             | IR.Application (f, a, data) ->
                 let (as1, cs1, e1) = infer f ctx
