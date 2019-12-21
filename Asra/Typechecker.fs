@@ -397,7 +397,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
         //TODO: Normalize types
         let substData (data: TempTypeData<'data>) = { 
             nodeData = data.nodeData
-            nodeType = Substitute.substType subst data.nodeType |> generalize data.mset
+            nodeType = Substitute.substType subst data.nodeType |> generalize (Substitute.substVarSet subst data.mset)
         }
 
         match expr with
