@@ -142,6 +142,15 @@ type TypeError<'data> =
     | UnboundVariable of string
     | UnificationMismatch of Type list * Type list
 
+type private FreeTypeVars<'a> = 'a -> Set<Var>
+
+let rec private freeType: FreeTypeVars<Type> = fun t ->
+    match t with
+        | Primitive _ -> Set.empty
+        | Var a -> Set.singleton a
+        | Func (t1, t2) -> Set.union (freeType t1) (freeType t2)
+        | Parameterized (n, ts) -> Set.unionMany (List.map freeType ts) 
+
 module private Substitute =
     type Substitution = Map<Var, Type>
     
@@ -156,15 +165,8 @@ module private Substitute =
             | Func (t1, t2) -> Func (substType s t1, substType s t2)
             | Parameterized (n, ts) -> Parameterized (n, List.map (substType s) ts)
 
-
-type private FreeTypeVars<'a> = 'a -> Set<Var>
-
-let rec private freeType: FreeTypeVars<Type> = fun t ->
-    match t with
-        | Primitive _ -> Set.empty
-        | Var a -> Set.singleton a
-        | Func (t1, t2) -> Set.union (freeType t1) (freeType t2)
-        | Parameterized (n, ts) -> Set.unionMany (List.map freeType ts) 
+    let substVarSet: Substitute<Set<Var>> = fun subst vs ->
+        Set.map (fun v -> substType subst (Var v) |> freeType) vs |> Set.unionMany
 
 let private nameGen () =
     let varNameCounter = ref 0
@@ -260,8 +262,9 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                 solve subst (EqConst (t, s', orig))
             | ImpInstConst (t1, ms, t2, orig) ->
                 let toGen = Substitute.substType subst t2
+                let vs = (Substitute.substVarSet subst ms)
                 log (sprintf "Generalizing: %A" c)
-                solve subst (ExpInstConst (t1, generalize ms toGen, orig))
+                solve subst (ExpInstConst (t1, generalize vs toGen, orig))
 
     let solveAll cs = Seq.fold (fun s c -> 
         Result.bind (fun subst -> solve subst c |> Result.mapError (fun e -> e, subst)) s) (Ok Map.empty) cs
