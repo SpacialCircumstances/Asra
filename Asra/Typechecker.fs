@@ -184,6 +184,33 @@ let private emptyContext = {
     genericsMap = Map.empty
 }
 
+let private occurs v t = Set.contains v (freeType t)
+
+let rec unify t1 t2 subst =
+    let bind v t =
+        if t = Var v then
+            subst |> Ok
+        else if occurs v t then
+            Error (InfiniteType (v, t))
+        else
+            Map.add v t subst |> Ok
+
+    match Substitute.substType subst t1, Substitute.substType subst t2 with
+        | r1, r2 when r1 = r2 -> Ok subst
+        | Var v, t -> bind v t
+        | t, Var v -> bind v t
+        | Func (t1, t2), Func (t3, t4) ->
+            Errors.result {
+                let! s1 = unify t1 t3 subst
+                return! unify t2 t4 s1
+            }
+        | Parameterized (n1, ts1), Parameterized (n2, ts2) ->
+            if n1 = n2 && (List.length ts1) = (List.length ts2) then
+                List.fold2 (fun s p1 p2 -> Result.bind (fun s -> unify p1 p2 s) s) (Ok subst) ts1 ts2
+            else
+                UnificationFail (t1, t2) |> Error
+        | _ -> Error (UnificationFail (t1, t2))
+
 let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: string -> unit) =
     let nextName = nameGen ()
     let fresh = next nextName
@@ -218,33 +245,6 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
         let s = Map.ofList (List.map (fun o -> o, fresh ()) ts)
         Substitute.substType s t
     
-    let occurs v t = Set.contains v (freeType t)
-
-    let rec unify t1 t2 subst =
-        let bind v t =
-            if t = Var v then
-                subst |> Ok
-            else if occurs v t then
-                Error (InfiniteType (v, t))
-            else
-                Map.add v t subst |> Ok
-
-        match Substitute.substType subst t1, Substitute.substType subst t2 with
-            | r1, r2 when r1 = r2 -> Ok subst
-            | Var v, t -> bind v t
-            | t, Var v -> bind v t
-            | Func (t1, t2), Func (t3, t4) ->
-                Errors.result {
-                    let! s1 = unify t1 t3 subst
-                    return! unify t2 t4 s1
-                }
-            | Parameterized (n1, ts1), Parameterized (n2, ts2) ->
-                if n1 = n2 && (List.length ts1) = (List.length ts2) then
-                    List.fold2 (fun s p1 p2 -> Result.bind (fun s -> unify p1 p2 s) s) (Ok subst) ts1 ts2
-                else
-                    UnificationFail (t1, t2) |> Error
-            | _ -> Error (UnificationFail (t1, t2))
-
     let rec solve subst c =
         match c with
             | EqConst (t1, t2, orig) ->
