@@ -11,13 +11,14 @@ type TestError =
     | ParserError of string
     | TypeError of TypeError<unit>
 
-[<Fact>]
-let ``id function`` () =
+let typecheck (expectedType: Scheme) (code: string) = 
     Errors.result {
-        let code = "fun a -> a"
         let! ast = Parser.testParser code |> Result.mapError ParserError
         let ir = IRGenerator.map ast
         let tc = Typechecker.createContext Map.empty testLog
         let! pt = tc ir |> Result.mapError TypeError
         return getExprType pt
-    } |> assertEqResult (Scheme (["t0"], (Func (Var "t0", Var "t0"))))
+    } |> assertEqResult expectedType
+
+[<Fact>]
+let ``id function`` () = typecheck (Scheme (["t0"], Func (Var "t0", Var "t0"))) "fun a -> a"
