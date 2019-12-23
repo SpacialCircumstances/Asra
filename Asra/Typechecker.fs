@@ -236,7 +236,7 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
                     | Some t -> t, context
             | AstCommon.Function (itd, otd) -> 
                 let it, ctx1 = toType itd context
-                let ot, ctx2 = toType itd ctx1
+                let ot, ctx2 = toType otd ctx1
                 Func (it, ot), ctx2
             | AstCommon.Parameterized (name, parameters) ->
                 let typedParams, gm = List.mapFold (fun gm p -> toType p gm) context parameters
@@ -451,6 +451,10 @@ let createContext (initialTypes: Map<string, AstCommon.TypeDeclaration>) (log: s
     let inferExpr (env: Environment.Env) (expr: IR.Expression<'data>) = 
         inferType env expr
 
-    let initialContext = Environment.fromSeq (Seq.map (fun (n, td) -> n, fst (toType td emptyContext) |> generalize Set.empty) (Map.toSeq initialTypes))
+    let liftExtern (n, td) = 
+        let tp, _ = toType td emptyContext
+        n, (tp |> generalize Set.empty)
+
+    let initialContext = Environment.fromSeq (Seq.map liftExtern (Map.toSeq initialTypes))
 
     inferExpr initialContext
