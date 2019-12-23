@@ -25,3 +25,23 @@ let ``id function`` () = typecheck (Scheme (["t0"], Func (Var "t0", Var "t0"))) 
 
 [<Fact>]
 let ``let id function`` () = typecheck (Scheme (["t0"], Func (Var "t0", Var "t0"))) "let id = fun a -> a in id end"
+
+[<Fact>]
+let ``generalized id function`` () =
+    do typecheck 
+        (Scheme ([], Primitive Int))
+        """
+        let
+            id = fun a -> a
+            a = id "Test"
+            b = id 4
+        in b end
+        """
+        
+[<Fact>]
+let ``id with let`` () =
+    typecheck (Scheme (["t0"], Func (Var "t0", Var "t0"))) "fun x -> let y = x in y end"
+
+[<Fact>]
+let ``wrap function`` () =
+    typecheck (Scheme (["t0"; "t1"], Func (Func (Var "t0", Var "t1"), Func (Var "t0", Var "t1")))) "fun x -> let y = fun z -> (x z) in y end"
