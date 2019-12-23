@@ -4,7 +4,7 @@ open System.IO
 
 type Formatter<'a> = TextWriter -> 'a -> unit
 
-let formatLog: Formatter<string> = fun writer -> fprintfn writer "LOG: %s"
+let formatLog: Formatter<string> = fun writer -> fprintfn writer "%s"
 
 let withHeader (header: string) (print: (Printf.TextWriterFormat<'a> -> 'a) -> 'b -> unit) =
     fun writer a ->
@@ -18,20 +18,5 @@ let withHeader (header: string) (print: (Printf.TextWriterFormat<'a> -> 'a) -> '
 let formatAst: Formatter<FrontendAst.Expression<AstCommon.SourcePosition>> = 
     withHeader "AST" (fun fmt ast -> fmt "%A" ast)
 
-let formatIR: Formatter<IR.Expression<AstCommon.SourcePosition, AstCommon.Declaration>> = 
+let formatIR: Formatter<IR.Expression<AstCommon.SourcePosition>> = 
     withHeader "IR" (fun fmt ir -> fmt "%A" ir)
-
-let formatTypedIR: Formatter<IR.Expression<Typechecker.TypeData<AstCommon.SourcePosition>, Typechecker.Declaration>> =
-    withHeader "Typed IR" (fun fmt tir -> fmt "%A" tir)
-
-let formatEquations: Formatter<Result<Typechecker.TypeEquation<AstCommon.SourcePosition>, string> seq> =
-    withHeader "Type equations" (fun fmt eqs -> 
-        Seq.iter (fun eq -> 
-            let strEq = match eq with
-                        | Ok e -> sprintf "%A" e
-                        | Error e -> sprintf "Error: %s" e
-            fmt "%s" strEq) eqs)
-
-let formatSubstitutions: Formatter<Typechecker.Substitutions> = 
-    withHeader "Type substitutions" (fun fmt subst -> 
-        Map.iter (fmt "'%s = %A") subst)

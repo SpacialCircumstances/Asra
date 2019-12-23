@@ -1,0 +1,3 @@
+let
+    singleton = fun a -> [a]
+in singleton 2 end

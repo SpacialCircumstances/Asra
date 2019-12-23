@@ -17,14 +17,9 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         do args.formatAst ast
         let ir = IRGenerator.map ast
         do args.formatIR ir
-        let tc = Typechecker.createContext Prelude.context
-        let typedIR = tc.generateTypenames ir
-        do args.formatTypedIR typedIR
-        let eqs = tc.generateEquations typedIR
-        do args.formatEquations eqs
-        let! subst = tc.solveEquations eqs |> Result.mapError TypecheckError
-        do args.formatSubstitutions subst
-        let programType = (tc.getExprType typedIR subst)
+        let tc = Typechecker.createContext Prelude.context args.log
+        let! typedIR = tc ir |> Result.mapError TypecheckError
+        let programType = Typechecker.getExprType typedIR
         do args.log (sprintf "Program type: %A" programType)
         return "Compilation finished"
     }
@@ -38,7 +33,6 @@ let runCompiler (args: Arguments) (compilerArgs: CompilerArguments) =
         | Error (ParserError e) -> 
             args.log (sprintf "Parser Error: %s" e)
             Error ()
-        | Error (TypecheckError (e, subst)) ->
-            args.log (sprintf "Type Error: %s" e)
-            args.formatSubstitutions subst
+        | Error (TypecheckError t) ->
+            args.log (sprintf "Type Error: %A" t)
             Error ()

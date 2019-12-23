@@ -7,21 +7,18 @@ type CompilerArguments = {
 
 type Arguments = {
     formatAst: FrontendAst.Expression<AstCommon.SourcePosition> -> unit
-    formatIR: IR.Expression<AstCommon.SourcePosition, AstCommon.Declaration> -> unit
-    formatTypedIR: IR.Expression<Typechecker.TypeData<AstCommon.SourcePosition>, Typechecker.Declaration> -> unit
-    formatEquations: Result<Typechecker.TypeEquation<AstCommon.SourcePosition>, string> seq -> unit
-    formatSubstitutions: Typechecker.Substitutions -> unit
+    formatIR: IR.Expression<AstCommon.SourcePosition> -> unit
     log: string -> unit
 }
 
 [<StructuredFormatDisplay("{AsString}")>]
-type CompilerError =
+type CompilerError<'data> =
     | IOError of string
     | ParserError of string
-    | TypecheckError of string * Typechecker.Substitutions
+    | TypecheckError of Typechecker.TypeError<'data>
 with
     override self.ToString () = match self with
                                     | IOError e -> e
                                     | ParserError e -> e
-                                    | TypecheckError (e, s) -> sprintf "%s, %A" e s
+                                    | TypecheckError t -> sprintf "%A" t
     member self.AsString = self.ToString ()
