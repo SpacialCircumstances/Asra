@@ -72,22 +72,6 @@ module private Environment =
         types: Map<Name, Scheme>
     }
 
-    let empty = { types = Map.empty }
-
-    let extend env (name, scheme) = { types = Map.add name scheme env.types }
-
-    let remove env name = { types = Map.remove name env.types }
-
-    let extends env bindings = { types = mergeMaps (Map.ofList bindings) env.types }
-
-    let lookup env name = Map.tryFind name env
-
-    let merge env1 env2 = { types = mergeMaps env1.types env2.types }
-
-    let mergeMany envs = { types = Seq.fold mergeMaps Map.empty envs }
-
-    let singleton name scheme = { types = Map.ofList [ name, scheme ] }
-
     let keys env = env.types |> Map.toSeq |> Seq.map fst
 
     let fromSeq schemes = { types = Map.ofSeq schemes }
