@@ -17,8 +17,11 @@ let typecheck (expectedType: Scheme) (code: string) =
         let ir = IRGenerator.map ast
         let tc = Typechecker.createContext Map.empty testLog
         let! pt = tc ir |> Result.mapError TypeError
-        return getExprType pt
+        return normalize (getExprType pt)
     } |> assertEqResult expectedType
 
 [<Fact>]
 let ``id function`` () = typecheck (Scheme (["t0"], Func (Var "t0", Var "t0"))) "fun a -> a"
+
+[<Fact>]
+let ``let id function`` () = typecheck (Scheme (["t0"], Func (Var "t0", Var "t0"))) "let id = fun a -> a in id end"

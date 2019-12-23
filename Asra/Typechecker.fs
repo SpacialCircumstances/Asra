@@ -184,6 +184,27 @@ let private emptyContext = {
     genericsMap = Map.empty
 }
 
+let normalize (Scheme (_, body)) = 
+    let rec fv t =
+        match t with
+            | Var a -> [ a ]
+            | Func (t1, t2) -> fv t1 @ fv t2
+            | Primitive _ -> []
+            | Parameterized (_, ts) -> List.collect fv ts 
+
+    let vg = nameGen () |> next
+    let ord = Seq.zip (fv body |> List.distinct) (Seq.initInfinite (fun _ -> vg ())) |> Map.ofSeq
+
+    let rec normtype t =
+        match t with
+            | Primitive x -> Primitive x
+            | Func (t1, t2) -> Func (normtype t1, normtype t2)
+            | Var a -> Map.find a ord
+            | Parameterized (n, ts) -> Parameterized (n, List.map normtype ts)
+    
+    let normed = normtype body
+    (freeType normed |> Set.toList, normed) |> Scheme
+
 let private occurs v t = Set.contains v (freeType t)
 
 let rec unify t1 t2 subst =
