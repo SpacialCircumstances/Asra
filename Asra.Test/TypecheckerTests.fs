@@ -45,3 +45,15 @@ let ``id with let`` () =
 [<Fact>]
 let ``wrap function`` () =
     typecheck (Scheme (["t0"; "t1"], Func (Func (Var "t0", Var "t1"), Func (Var "t0", Var "t1")))) "fun x -> let y = fun z -> (x z) in y end"
+
+[<Fact>]
+let ``List typing 1`` () =
+    typecheck (Scheme (["t0"], Parameterized ("List", [Var "t0"]))), "[]"
+
+[<Fact>]
+let ``List typing 2`` () =
+    typecheck (Scheme ([], Parameterized ("List", [Primitive Int]))), "[12; 23]"
+
+[<Fact>]
+let ``List typing 3`` () =
+    typecheck (Scheme ([], Parameterized ("List", [Primitive Float]))), "let x = 2.3 .+ 4.3 in [x] end"
