@@ -15,7 +15,7 @@ let typecheck (expectedType: Scheme) (code: string) =
     Errors.result {
         let! ast = Parser.testParser code |> Result.mapError ParserError
         let ir = IRGenerator.map ast
-        let tc = Typechecker.createContext Map.empty testLog
+        let tc = Typechecker.createContext Prelude.context testLog
         let! pt = tc ir |> Result.mapError TypeError
         return normalize (getExprType pt)
     } |> assertEqResult expectedType
