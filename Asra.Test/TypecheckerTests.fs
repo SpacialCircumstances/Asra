@@ -57,3 +57,25 @@ let ``List typing 2`` () =
 [<Fact>]
 let ``List typing 3`` () =
     typecheck (Scheme ([], Parameterized ("List", [Primitive Float]))), "let x = 2.3 .+ 4.3 in [x] end"
+
+[<Fact>]
+let ``Variable shadowing 1`` () =
+    do typecheck
+        (Scheme ([], Primitive Int))
+        """
+        let
+            a = "Test"
+            a = 2
+        in a end
+        """
+
+[<Fact>]
+let ``Variable shadowing 2`` () =
+    do typecheck
+        (Scheme ([], Func (Primitive Int, Primitive Int)))
+        """
+        let
+            a = "Test"
+            succ = fun a -> a + 1
+        in succ end
+        """
