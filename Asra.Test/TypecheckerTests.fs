@@ -79,3 +79,14 @@ let ``Variable shadowing 2`` () =
             succ = fun a -> a + 1
         in succ end
         """
+
+[<Fact>]
+let ``Factorial recursive`` () =
+    do typecheck
+        (Scheme ([], Primitive Int))
+        """
+        let
+            rec fac = fun n -> 
+                if (n == 1) then 1 else (n * (fac (n - 1))) end
+        in fac 3 end
+        """
