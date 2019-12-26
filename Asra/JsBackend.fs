@@ -15,4 +15,5 @@ and Value =
 and Statement = 
     | Import
     | Assignment of Variable * Value
+    | ShortConditionalAssignment of Variable * Value * Value * Value
     | ConditionalAssignment of Variable * Value * Block * Block
