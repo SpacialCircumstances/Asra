@@ -1,6 +1,6 @@
 ﻿module JsBackend
 
-type Variable = string
+type Variable = Variable of string
 
 type Block = {
     statements: Statement list
