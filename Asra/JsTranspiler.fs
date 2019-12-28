@@ -2,14 +2,15 @@
 
 open JsBackend
 
-type NameMapping = string option -> Variable
+type NameGenerator = string option -> Variable
+
+type NamingMode = Compact | Debug
 
 type Context = {
-    nameMapping: NameMapping
+    nameGen: NameGenerator
+    symbolTable: Map<string, string>
     statements: Statement list
 }
-
-let getName (ctx: Context ref) (nameHint: string option) = (!ctx).nameMapping nameHint
 
 let addStatement (ctx: Context ref) (st: Statement) = 
     let oldCtx = !ctx
