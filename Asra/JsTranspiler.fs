@@ -2,22 +2,26 @@
 
 open JsBackend
 
-type NameGenerator = string option -> Variable
+type NamingStrategy = Compact | Debug
 
-type NamingMode = Compact | Debug
+type VariableKey = VarKey of int
 
 type Context = {
-    nameGen: NameGenerator
-    symbolTable: Map<string, string>
+    varNameCounter: int ref
+    namingStrategy: NamingStrategy
+    symbolTable: Map<string, VariableKey>
+    jsNameMapping: Map<VariableKey, string> ref
     statements: Statement list
 }
 
-let addStatement (ctx: Context ref) (st: Statement) = 
-    let oldCtx = !ctx
-    ctx := { oldCtx with statements = st :: oldCtx.statements }
+let getVariable (ctx: Context) (name: string) = 
+    Map.tryFind name ctx.symbolTable |> Option.map (fun key -> Map.find key !ctx.jsNameMapping)
 
-let finish (ctx: Context ref) (retVal: Variable) = { 
-    statements = List.rev (!ctx).statements
+let addStatement (ctx: Context) (st: Statement) = 
+    { ctx with statements = st :: ctx.statements }
+
+let finish (ctx: Context) (retVal: Variable) = { 
+    statements = List.rev ctx.statements
     returnValue = retVal
 }
 
