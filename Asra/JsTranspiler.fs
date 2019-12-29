@@ -14,8 +14,11 @@ type Context = {
     statements: Statement list
 }
 
+//Get js variable from asra name
 let getVariable (ctx: Context) (name: string) = 
-    Map.tryFind name ctx.symbolTable |> Option.map (fun key -> Map.find key !ctx.jsNameMapping)
+    Map.tryFind name ctx.symbolTable 
+        |> Option.map (fun key -> Map.find key !ctx.jsNameMapping)
+        |> Option.map Variable
 
 let addStatement (ctx: Context) (st: Statement) = 
     { ctx with statements = st :: ctx.statements }
