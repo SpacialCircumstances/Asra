@@ -23,13 +23,22 @@ let getVariable (ctx: Context) (name: string) =
 let addStatement (ctx: Context) (st: Statement) = 
     { ctx with statements = st :: ctx.statements }
 
-let finish (ctx: Context) (retVal: Variable) = { 
+let finish (ctx: Context) (retVal: Value) = { 
     statements = List.rev ctx.statements
-    returnValue = Var retVal
+    returnValue = retVal
 }
 
-let transpile (expr: IR.Expression<Typechecker.DataWithType<'data>>) =
-    {
-        statements = []
-        returnValue = Variable "" |> Var
+let rec transpileExpr (expr: IR.Expression<Typechecker.DataWithType<'data>>) (ctx: Context): Context * Value =
+    match expr with
+        | _ -> invalidOp "Not implemented"
+
+let transpile (expr: IR.Expression<Typechecker.DataWithType<'data>>) (strategy: NamingStrategy) =
+    let initialContext = {
+        varNameCounter = ref 0
+        namingStrategy = strategy
+        symbolTable = Map.empty //TODO: Add prelude
+        jsNameMapping = ref Map.empty //TODO: Add prelude
+        statements = [] //TODO: Import stdlib
     }
+    let finalContext, resultValue = transpileExpr expr initialContext
+    finish finalContext resultValue
