@@ -4,7 +4,7 @@ type Variable = Variable of string
 
 type Block = {
     statements: Statement list
-    returnValue: Variable
+    returnValue: Value
 }
 
 and Value =

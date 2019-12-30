@@ -25,11 +25,11 @@ let addStatement (ctx: Context) (st: Statement) =
 
 let finish (ctx: Context) (retVal: Variable) = { 
     statements = List.rev ctx.statements
-    returnValue = retVal
+    returnValue = Var retVal
 }
 
 let transpile (expr: IR.Expression<Typechecker.DataWithType<'data>>) =
     {
         statements = []
-        returnValue = Variable ""
+        returnValue = Variable "" |> Var
     }
