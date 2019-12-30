@@ -8,9 +8,10 @@ type Block = {
 }
 
 and Value =
+    | Var of Variable
     | Literal of AstCommon.Literal<Value>
     | Lambda of Variable list * Block
-    | FunctionCall of Variable * Value list
+    | FunctionCall of Value * Value
 
 and Statement = 
     | Import
