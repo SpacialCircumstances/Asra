@@ -29,8 +29,11 @@ let finish (ctx: Context) (retVal: Value) = {
 }
 
 let rec transpileExpr (expr: IR.Expression<Typechecker.DataWithType<'data>>) (ctx: Context): Context * Value =
+    let swap (a, b) = (b, a)
     match expr with
-        | _ -> invalidOp "Not implemented"
+        | IR.Literal (lit, _) ->
+            let (newLit, newCtx) = AstCommon.foldLiteral (fun c e -> transpileExpr e c |> swap) ctx lit
+            newCtx, Literal newLit
 
 let transpile (expr: IR.Expression<Typechecker.DataWithType<'data>>) (strategy: NamingStrategy) =
     let initialContext = {
