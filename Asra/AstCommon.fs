@@ -19,6 +19,17 @@ with
             | List exprs -> sprintf "[%s]" (System.String.Join("; ", exprs))
     member self.AsString = self.ToString ()
 
+let foldLiteral (fold: 'state -> 'e1 -> 'e2 * 'state) (initialState: 'state) (lit: Literal<'e1>) =
+    match lit with
+        | Float f -> Float f, initialState
+        | Int i -> Int i, initialState
+        | Bool b -> Bool b, initialState
+        | String s -> String s, initialState
+        | Unit -> Unit, initialState
+        | List exprs -> 
+            let (newExprs, newState) = List.mapFold fold initialState exprs
+            (List newExprs, newState)
+
 let mapLiteral (mapper: 'e1 -> 'e2) (lit: Literal<'e1>) =
     match lit with
         | Float f -> Float f
