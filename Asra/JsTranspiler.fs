@@ -34,6 +34,15 @@ let rec transpileExpr (expr: IR.Expression<Typechecker.DataWithType<'data>>) (ct
         | IR.Literal (lit, _) ->
             let (newLit, newCtx) = AstCommon.foldLiteral (fun c e -> transpileExpr e c |> swap) ctx lit
             newCtx, Literal newLit
+        | IR.Variable (name, _) ->
+            let var = getVariable ctx name
+            match var with
+                | Some var -> ctx, Var var
+                | None -> invalidOp (sprintf "Fatal error: Variable %s not found" name)
+        | IR.Application (funcExpr, argExpr, _) ->  
+            let ctx, funcVal = transpileExpr funcExpr ctx
+            let ctx, argVal = transpileExpr argExpr ctx
+            ctx, FunctionCall (funcVal, argVal)
 
 let transpile (expr: IR.Expression<Typechecker.DataWithType<'data>>) (strategy: NamingStrategy) =
     let initialContext = {
