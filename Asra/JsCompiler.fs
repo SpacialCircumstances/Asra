@@ -1,4 +1,4 @@
-﻿module JsTranspiler
+﻿module JsCompiler
 
 open JsBackend
 
@@ -28,11 +28,11 @@ let finish (ctx: Context) (retVal: Value) = {
     returnValue = retVal
 }
 
-let rec transpileExpr (expr: IR.Expression<Typechecker.DataWithType<'data>>) (ctx: Context): Context * Value =
+let rec compileExpr (expr: IR.Expression<Typechecker.DataWithType<'data>>) (ctx: Context): Context * Value =
     let swap (a, b) = (b, a)
     match expr with
         | IR.Literal (lit, _) ->
-            let (newLit, newCtx) = AstCommon.foldLiteral (fun c e -> transpileExpr e c |> swap) ctx lit
+            let (newLit, newCtx) = AstCommon.foldLiteral (fun c e -> compileExpr e c |> swap) ctx lit
             newCtx, Literal newLit
         | IR.Variable (name, _) ->
             let var = getVariable ctx name
@@ -40,11 +40,14 @@ let rec transpileExpr (expr: IR.Expression<Typechecker.DataWithType<'data>>) (ct
                 | Some var -> ctx, Var var
                 | None -> invalidOp (sprintf "Fatal error: Variable %s not found" name)
         | IR.Application (funcExpr, argExpr, _) ->  
-            let ctx, funcVal = transpileExpr funcExpr ctx
-            let ctx, argVal = transpileExpr argExpr ctx
+            let ctx, funcVal = compileExpr funcExpr ctx
+            let ctx, argVal = compileExpr argExpr ctx
             ctx, FunctionCall (funcVal, argVal)
+        | IR.Lambda (decl, body, _) ->
+            invalidOp "Not implemented"
 
-let transpile (expr: IR.Expression<Typechecker.DataWithType<'data>>) (strategy: NamingStrategy) =
+
+let compile (expr: IR.Expression<Typechecker.DataWithType<'data>>) (strategy: NamingStrategy) =
     let initialContext = {
         varNameCounter = ref 0
         namingStrategy = strategy
@@ -52,5 +55,5 @@ let transpile (expr: IR.Expression<Typechecker.DataWithType<'data>>) (strategy: 
         jsNameMapping = ref Map.empty //TODO: Add prelude
         statements = [] //TODO: Import stdlib
     }
-    let finalContext, resultValue = transpileExpr expr initialContext
+    let finalContext, resultValue = compileExpr expr initialContext
     finish finalContext resultValue
