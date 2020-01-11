@@ -1,6 +1,7 @@
 ﻿module TypecheckerTests
 
 open Xunit
+open Types
 open Typechecker
 open Asserts
 open System.Diagnostics

@@ -3,54 +3,9 @@
 // Adapted and ported from https://github.com/kseo/poly_constraints (MIT License)
 
 open IR
-
-type Primitive =
-    | Int
-    | Float
-    | Bool
-    | String
-    | Unit
-
-type Var = string
-
-type Name = string
+open Types
 
 let private mergeMaps map1 map2 = Map.fold (fun acc key value -> Map.add key value acc) map1 map2
-
-[<StructuredFormatDisplay("{AsString}")>]
-type Type =
-    | Primitive of Primitive
-    | Func of Type * Type
-    | Var of Var
-    | Parameterized of string * Type list
-with
-    override self.ToString () =
-        let parameterizedToString (name, types: Type list) = sprintf "%s %s" name (System.String.Join(" ", types))
-        match self with
-            | Parameterized (name, types) -> parameterizedToString (name, types)
-            | Primitive str -> str.ToString ()
-            | Var tp -> "'" + tp
-            | Func (input, output) -> 
-                match input with
-                    | Var tp ->
-                        sprintf "'%s -> %O" tp output
-                    | Parameterized (name, types) ->
-                        sprintf "(%s) -> %O" (parameterizedToString (name, types)) output
-                    | Func (fti, fto) ->
-                        sprintf "(%O -> %O) -> %O" fti fto output
-                    | _ -> sprintf "%O -> %O" input output
-    member self.AsString = self.ToString()
-    
-type [<StructuredFormatDisplay("{AsString}")>] Scheme = 
-    | Scheme of (Var list) * Type
-with
-    override self.ToString () = 
-        let (Scheme (fvs, t)) = self
-        match fvs with
-            | [] -> t.ToString ()
-            | _ -> sprintf "forall %s. %A" (System.String.Join(". ", fvs)) t
-
-    member self.AsString = self.ToString ()
 
 type private TempTypeData<'data> = {
     nodeData: 'data
@@ -59,13 +14,6 @@ type private TempTypeData<'data> = {
 }
 
 let private getType (expr: IR.Expression<TempTypeData<'data>>) = (getData expr).nodeType
-
-type DataWithType<'data> = {
-    nodeData: 'data
-    nodeType: Scheme
-}
-
-let getExprType (expr: IR.Expression<DataWithType<'data>>) = (getData expr).nodeType
 
 module private Environment =
     type Env = {
