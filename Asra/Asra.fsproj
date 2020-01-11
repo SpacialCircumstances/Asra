@@ -14,8 +14,6 @@
     <Compile Include="FrontendAst.fs" />
     <Compile Include="IRGenerator.fs" />
     <Compile Include="Typechecker.fs" />
-    <Compile Include="JsBackend.fs" />
-    <Compile Include="JsCompiler.fs" />
     <Compile Include="Parser.fs" />
   </ItemGroup>
 
