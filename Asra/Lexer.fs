@@ -38,6 +38,14 @@ let lexer (name: string) (code: string) =
     let singleCharToken c = match c with
                                 | '(' -> ValueSome LeftParen
                                 | ')' -> ValueSome RightParen
+                                | '{' -> ValueSome LeftCurlyBracket
+                                | '}' -> ValueSome RightCurlyBracket
+                                | '[' -> ValueSome LeftSquareBracket
+                                | ']' -> ValueSome RightSquareBracket
+                                | '=' -> ValueSome Equal
+                                | ';' -> ValueSome Semicolon
+                                | ':' -> ValueSome Colon
+                                | ',' -> ValueSome Comma
                                 | _ -> ValueNone
 
     while pos > (String.length code) do
