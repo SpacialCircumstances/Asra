@@ -36,6 +36,5 @@ type TokenData =
 [<Struct>]
 type Token = {
     data: TokenData
-    lexeme: string
     position: SourcePosition
 }
