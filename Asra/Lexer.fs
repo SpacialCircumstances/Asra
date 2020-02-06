@@ -13,7 +13,7 @@ type State =
     | Current of SourcePosition * CurrentTokenType
 
 let lexer (name: string) (code: string) =
-    let tokens = ResizeArray ()
+    let tokens = ResizeArray<Token> ()
     let mutable pos = 0
     let mutable line = 1
     let mutable col = 0
@@ -41,6 +41,14 @@ let lexer (name: string) (code: string) =
         }
     }
 
+    let setCurrentToken tt =
+        let pos = {
+            line = line
+            col = col
+            filename = name
+        }
+        state <- Current (pos, tt)
+
     let singleCharToken c = match c with
                                 | '(' -> ValueSome LeftParen
                                 | ')' -> ValueSome RightParen
@@ -60,16 +68,28 @@ let lexer (name: string) (code: string) =
             | NextToken ->
                 match current with
                     | ' ' | '\t' | '\r' -> incrp ()
+                    | '#' -> 
+                        setCurrentToken Comment
+                        incrp ()
+
                     | '\n' -> incrl ()
                     | c -> match singleCharToken c with
                             | ValueSome td -> 
-                                addToken td
+                                token td |> addToken
                                 incrp ()
                             | ValueNone ->
                                 ()
                     
                 ()
-            | Current (tokenStart, token) -> ()
+            | Current (tokenStart, token) -> 
+                match token with
+                    | Comment ->
+                        match current with
+                            | '\n' ->
+                                state <- NextToken
+                                incrl ()
+                            | _ -> incrp ()
+                    | _ -> ()
         ()
 
     tokens
