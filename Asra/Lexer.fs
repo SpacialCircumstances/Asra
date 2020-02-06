@@ -73,14 +73,20 @@ let lexer (name: string) (code: string) =
                         incrp ()
 
                     | '\n' -> incrl ()
+                    | '"' ->
+                        setCurrentToken StringLiteral
+                        incrp ()
+                    | c when System.Char.IsDigit c ->
+                        setCurrentToken NumberLiteral
+                        incrp ()
                     | c -> match singleCharToken c with
                             | ValueSome td -> 
                                 token td |> addToken
                                 incrp ()
                             | ValueNone ->
-                                ()
-                    
-                ()
+                                setCurrentToken Identifier
+                                incrp ()
+
             | Current (tokenStart, token) -> 
                 match token with
                     | Comment ->
