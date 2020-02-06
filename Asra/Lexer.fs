@@ -2,9 +2,15 @@
 
 open Token
 
+type CurrentTokenType =
+    | NumberLiteral
+    | StringLiteral
+    | Identifier
+    | Comment
+
 type State = 
     | NextToken
-    | Current of Token
+    | Current of SourcePosition * CurrentTokenType
 
 let lexer (name: string) (code: string) =
     let tokens = ResizeArray ()
@@ -63,7 +69,7 @@ let lexer (name: string) (code: string) =
                                 ()
                     
                 ()
-            | Current token -> ()
+            | Current (tokenStart, token) -> ()
         ()
 
     tokens
