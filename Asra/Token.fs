@@ -4,6 +4,7 @@
 type SourcePosition = {
     line: int
     col: int
+    position: int
     filename: string
 }
 

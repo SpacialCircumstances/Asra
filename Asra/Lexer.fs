@@ -37,6 +37,7 @@ let lexer (name: string) (code: string) =
         position = {
             line = line
             col = col
+            position = pos
             filename = name
         }
     }
@@ -45,6 +46,7 @@ let lexer (name: string) (code: string) =
         let pos = {
             line = line
             col = col
+            position = pos
             filename = name
         }
         state <- Current (pos, tt)
@@ -95,6 +97,18 @@ let lexer (name: string) (code: string) =
                                 state <- NextToken
                                 incrl ()
                             | _ -> incrp ()
+                    | StringLiteral ->
+                        //TODO: Support unicode, escaping and other fancy stuff
+                        if current = '"' then
+                            let lit = code.[(tokenStart.position + 1) .. (pos - 1)]
+                            let token = {
+                                data = TokenData.StringLiteral lit
+                                position = tokenStart
+                            }
+                            addToken token
+                            incrp ()
+                        else incrp ()
+                        ()
                     | _ -> ()
         ()
 
