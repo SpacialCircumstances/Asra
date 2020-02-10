@@ -17,10 +17,10 @@ type State =
     | Current of SourcePosition * CurrentTokenType
 
 type LexerError = {
-    start: SourcePosition
+    start: SourcePosition option
     error: SourcePosition
     message: string
-    token: CurrentTokenType
+    token: CurrentTokenType option
 }
 
 let separatorSet = set [
@@ -69,6 +69,31 @@ let lexer (name: string) (code: string) =
     let mutable col = 0
     let mutable state = NextToken
 
+    let currentPos () = {
+        line = line
+        col = col
+        position = pos
+        filename = name
+    }
+
+    let error msg = 
+        let e = match state with
+                    | NextToken ->
+                        {
+                            message = msg
+                            token = None
+                            start = None
+                            error = currentPos ()
+                        }
+                    | Current (start, ct) ->
+                        {
+                            message = msg
+                            token = Some ct
+                            start = Some start
+                            error = currentPos ()
+                        }
+        do errors.Add e
+
     let addToken t = 
         tokens.Add t
         state <- NextToken
@@ -84,22 +109,11 @@ let lexer (name: string) (code: string) =
 
     let token td = {
         data = td
-        position = {
-            line = line
-            col = col
-            position = pos
-            filename = name
-        }
+        position = currentPos ()
     }
 
     let setCurrentToken tt =
-        let pos = {
-            line = line
-            col = col
-            position = pos
-            filename = name
-        }
-        state <- Current (pos, tt)
+        state <- Current (currentPos (), tt)
 
     let singleCharToken c = match c with
                                 | '(' -> ValueSome LeftParen
@@ -164,7 +178,7 @@ let lexer (name: string) (code: string) =
                                         | BeforeDecimalPoint ->
                                             state <- Current (tokenStart, NumberLiteral AfterDecimalPoint)
                                             incrp ()
-                                        | AfterDecimalPoint -> invalidOp "Lexer error" //TODO: Better error handling
+                                        | AfterDecimalPoint -> error "Encountered multiple decimal points"
                             | _ ->
                                 if System.Char.IsDigit current then 
                                     incrp ()
@@ -176,7 +190,7 @@ let lexer (name: string) (code: string) =
                                     }
                                     addToken token
                                 else
-                                    invalidOp "Error" //TODO
+                                    sprintf "Encountered invalid character: %c" current |> error
                     | Identifier -> 
                         if isSeparator current then
                             let identifier = code.[tokenStart.position..(pos-1)]
