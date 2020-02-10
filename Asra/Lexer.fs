@@ -16,6 +16,13 @@ type State =
     | NextToken
     | Current of SourcePosition * CurrentTokenType
 
+type LexerError = {
+    start: SourcePosition
+    error: SourcePosition
+    message: string
+    token: CurrentTokenType
+}
+
 let separatorSet = set [
     ' '
     '\n'
@@ -55,6 +62,8 @@ let handleKeywords (identifier: string) =
 
 let lexer (name: string) (code: string) =
     let tokens = ResizeArray<Token> ()
+    let errors = ResizeArray<LexerError> ()
+
     let mutable pos = 0
     let mutable line = 1
     let mutable col = 0
@@ -178,4 +187,4 @@ let lexer (name: string) (code: string) =
                             addToken token
                         else incrp ()
 
-    tokens
+    tokens, errors
