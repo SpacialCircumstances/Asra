@@ -16,7 +16,24 @@ type State =
     | NextToken
     | Current of SourcePosition * CurrentTokenType
 
-let isSeparator c = false
+let separatorSet = set [
+    ' '
+    '\n'
+    '\r'
+    '\t'
+    '"'
+    ':'
+    ';'
+    '('
+    ')'
+    '{'
+    '}'
+    '['
+    ']'
+    '#'
+]
+
+let isSeparator c = Set.contains c separatorSet
 
 let handleKeywords (identifier: string) = TokenData.Identifier identifier
 
