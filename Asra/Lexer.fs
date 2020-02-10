@@ -93,6 +93,7 @@ let lexer (name: string) (code: string) =
                             error = currentPos ()
                         }
         do errors.Add e
+        state <- NextToken
 
     let addToken t = 
         tokens.Add t
