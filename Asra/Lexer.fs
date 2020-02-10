@@ -2,8 +2,12 @@
 
 open Token
 
+type NumberLiteralState =
+    | BeforeDecimalPoint
+    | AfterDecimalPoint
+
 type CurrentTokenType =
-    | NumberLiteral
+    | NumberLiteral of NumberLiteralState
     | StringLiteral
     | Identifier
     | Comment
@@ -11,6 +15,8 @@ type CurrentTokenType =
 type State = 
     | NextToken
     | Current of SourcePosition * CurrentTokenType
+
+let isSeparator c = false
 
 let lexer (name: string) (code: string) =
     let tokens = ResizeArray<Token> ()
@@ -79,7 +85,7 @@ let lexer (name: string) (code: string) =
                         setCurrentToken StringLiteral
                         incrp ()
                     | c when System.Char.IsDigit c ->
-                        setCurrentToken NumberLiteral
+                        setCurrentToken (NumberLiteral BeforeDecimalPoint)
                         incrp ()
                     | c -> match singleCharToken c with
                             | ValueSome td -> 
@@ -108,8 +114,25 @@ let lexer (name: string) (code: string) =
                             addToken token
                             incrp ()
                         else incrp ()
-                        ()
-                    | _ -> ()
-        ()
+                    | NumberLiteral numberState ->
+                        match current with
+                            | '.' -> match numberState with
+                                        | BeforeDecimalPoint ->
+                                            state <- Current (tokenStart, NumberLiteral AfterDecimalPoint)
+                                            incrp ()
+                                        | AfterDecimalPoint -> invalidOp "Lexer error" //TODO: Better error handling
+                            | x ->
+                                if System.Char.IsDigit current then 
+                                    incrp ()
+                                else if isSeparator current then
+                                    let lit = code.[tokenStart.position..(pos-1)]
+                                    let token = {
+                                        data = TokenData.NumberLiteral lit
+                                        position = tokenStart
+                                    }
+                                    addToken token
+                                else
+                                    invalidOp "Error" //TODO
+                    | Identifier -> ()
 
     tokens
