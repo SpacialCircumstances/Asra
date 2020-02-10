@@ -35,7 +35,23 @@ let separatorSet = set [
 
 let isSeparator c = Set.contains c separatorSet
 
-let handleKeywords (identifier: string) = TokenData.Identifier identifier
+let keywordMap = Map.ofList [
+    "let", Let
+    "in", In
+    "rec", Rec
+    "end", End
+    "if", If
+    "then", Then
+    "else", Else
+    "fun", Fun
+    "type", Type
+    "->", Arrow
+]
+
+let handleKeywords (identifier: string) = 
+    match Map.tryFind identifier keywordMap with
+        | None -> TokenData.Identifier identifier
+        | Some kw -> kw
 
 let lexer (name: string) (code: string) =
     let tokens = ResizeArray<Token> ()
