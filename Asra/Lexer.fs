@@ -18,6 +18,8 @@ type State =
 
 let isSeparator c = false
 
+let handleKeywords (identifier: string) = TokenData.Identifier identifier
+
 let lexer (name: string) (code: string) =
     let tokens = ResizeArray<Token> ()
     let mutable pos = 0
@@ -121,7 +123,7 @@ let lexer (name: string) (code: string) =
                                             state <- Current (tokenStart, NumberLiteral AfterDecimalPoint)
                                             incrp ()
                                         | AfterDecimalPoint -> invalidOp "Lexer error" //TODO: Better error handling
-                            | x ->
+                            | _ ->
                                 if System.Char.IsDigit current then 
                                     incrp ()
                                 else if isSeparator current then
@@ -133,6 +135,14 @@ let lexer (name: string) (code: string) =
                                     addToken token
                                 else
                                     invalidOp "Error" //TODO
-                    | Identifier -> ()
+                    | Identifier -> 
+                        if isSeparator current then
+                            let identifier = code.[tokenStart.position..(pos-1)]
+                            let token = {
+                                data = handleKeywords identifier
+                                position = tokenStart
+                            }
+                            addToken token
+                        else incrp ()
 
     tokens
