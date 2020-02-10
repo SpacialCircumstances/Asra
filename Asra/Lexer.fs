@@ -201,4 +201,8 @@ let lexer (name: string) (code: string) =
                             addToken token
                         else incrp ()
 
+    match state with
+        | Current (_, StringLiteral) -> error "Unterminated string literal"
+        | _ -> ()
+
     tokens, errors
