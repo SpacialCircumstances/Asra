@@ -23,13 +23,13 @@ type TokenData =
     | Type
     | Equal
     | Arrow
+    | Separator
     | LeftParen
     | RightParen
     | LeftSquareBracket
     | RightSquareBracket
     | LeftCurlyBracket
     | RightCurlyBracket
-    | Semicolon
     | Comma
     | Period
     | Colon

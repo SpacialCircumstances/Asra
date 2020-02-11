@@ -124,7 +124,7 @@ let lexer (name: string) (code: string) =
                                 | '[' -> ValueSome LeftSquareBracket
                                 | ']' -> ValueSome RightSquareBracket
                                 | '=' -> ValueSome Equal
-                                | ';' -> ValueSome Semicolon
+                                | ';' -> ValueSome Separator
                                 | ':' -> ValueSome Colon
                                 | ',' -> ValueSome Comma
                                 | _ -> ValueNone
@@ -138,8 +138,9 @@ let lexer (name: string) (code: string) =
                     | '#' -> 
                         setCurrentToken Comment
                         incrp ()
-
-                    | '\n' -> incrl ()
+                    | '\n' -> 
+                        token Separator |> addToken
+                        incrl ()
                     | '"' ->
                         setCurrentToken StringLiteral
                         incrp ()
