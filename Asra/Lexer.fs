@@ -24,6 +24,7 @@ type LexerError = {
 }
 
 let separatorSet = set [
+    char 0
     ' '
     '\n'
     '\r'
@@ -129,79 +130,86 @@ let lexer (name: string) (code: string) =
                                 | ',' -> ValueSome Comma
                                 | _ -> ValueNone
 
-    while pos > (String.length code) do
-        let current = code.[pos]
+    let lexChar c =
         match state with
-            | NextToken ->
-                match current with
-                    | ' ' | '\t' | '\r' -> incrp ()
-                    | '#' -> 
-                        setCurrentToken Comment
-                        incrp ()
-                    | '\n' -> 
-                        token Separator |> addToken
-                        incrl ()
-                    | '"' ->
-                        setCurrentToken StringLiteral
-                        incrp ()
-                    | c when System.Char.IsDigit c ->
-                        setCurrentToken (NumberLiteral BeforeDecimalPoint)
-                        incrp ()
-                    | c -> match singleCharToken c with
-                            | ValueSome td -> 
-                                token td |> addToken
-                                incrp ()
-                            | ValueNone ->
-                                setCurrentToken Identifier
-                                incrp ()
-
-            | Current (tokenStart, token) -> 
-                match token with
-                    | Comment ->
-                        match current with
-                            | '\n' ->
-                                state <- NextToken
-                                incrl ()
-                            | _ -> incrp ()
-                    | StringLiteral ->
-                        //TODO: Support unicode, escaping and other fancy stuff
-                        if current = '"' then
-                            let lit = code.[(tokenStart.position + 1) .. (pos - 1)]
-                            let token = {
-                                data = TokenData.StringLiteral lit
-                                position = tokenStart
-                            }
-                            addToken token
+        | NextToken ->
+            match c with
+                | ' ' | '\t' | '\r' -> incrp ()
+                | x when c = char 0 -> () //EOF
+                | '#' -> 
+                    setCurrentToken Comment
+                    incrp ()
+                | '\n' -> 
+                    token Separator |> addToken
+                    incrl ()
+                | '"' ->
+                    setCurrentToken StringLiteral
+                    incrp ()
+                | c when System.Char.IsDigit c ->
+                    setCurrentToken (NumberLiteral BeforeDecimalPoint)
+                    incrp ()
+                | c -> match singleCharToken c with
+                        | ValueSome td -> 
+                            token td |> addToken
                             incrp ()
-                        else incrp ()
-                    | NumberLiteral numberState ->
-                        match current with
-                            | '.' -> match numberState with
-                                        | BeforeDecimalPoint ->
-                                            state <- Current (tokenStart, NumberLiteral AfterDecimalPoint)
-                                            incrp ()
-                                        | AfterDecimalPoint -> error "Encountered multiple decimal points"
-                            | _ ->
-                                if System.Char.IsDigit current then 
-                                    incrp ()
-                                else if isSeparator current then
-                                    let lit = code.[tokenStart.position..(pos-1)]
-                                    let token = {
-                                        data = TokenData.NumberLiteral lit
-                                        position = tokenStart
-                                    }
-                                    addToken token
-                                else
-                                    sprintf "Encountered invalid character: %c" current |> error
-                    | Identifier -> 
-                        if isSeparator current then
-                            let identifier = code.[tokenStart.position..(pos-1)]
-                            let token = {
-                                data = handleKeywords identifier
-                                position = tokenStart
-                            }
-                            addToken token
-                        else incrp ()
+                        | ValueNone ->
+                            setCurrentToken Identifier
+                            incrp ()
+
+        | Current (tokenStart, token) -> 
+            match token with
+                | Comment ->
+                    match c with
+                        | '\n' ->
+                            state <- NextToken
+                            incrl ()
+                        | _ -> incrp ()
+                | StringLiteral ->
+                    //TODO: Support unicode, escaping and other fancy stuff
+                    if c = '"' then
+                        let lit = code.[(tokenStart.position + 1) .. (pos - 1)]
+                        let token = {
+                            data = TokenData.StringLiteral lit
+                            position = tokenStart
+                        }
+                        addToken token
+                        incrp ()
+                    else incrp ()
+                | NumberLiteral numberState ->
+                    match c with
+                        | '.' -> match numberState with
+                                    | BeforeDecimalPoint ->
+                                        state <- Current (tokenStart, NumberLiteral AfterDecimalPoint)
+                                        incrp ()
+                                    | AfterDecimalPoint -> error "Encountered multiple decimal points"
+                        | _ ->
+                            if System.Char.IsDigit c then 
+                                incrp ()
+                            else if isSeparator c then
+                                let lit = code.[tokenStart.position..(pos-1)]
+                                let token = {
+                                    data = TokenData.NumberLiteral lit
+                                    position = tokenStart
+                                }
+                                addToken token
+                                state <- NextToken
+                            else
+                                sprintf "Encountered invalid character: %c" c |> error
+                | Identifier -> 
+                    if isSeparator c then
+                        let identifier = code.[tokenStart.position..(pos-1)]
+                        let token = {
+                            data = handleKeywords identifier
+                            position = tokenStart
+                        }
+                        addToken token
+                        state <- NextToken
+                    else incrp ()
+
+    while pos < (String.length code) do
+        lexChar code.[pos]
+
+    lexChar (char 0)
 
     match state with
         | Current (_, StringLiteral) -> error "Unterminated string literal"
