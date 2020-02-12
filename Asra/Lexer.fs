@@ -30,6 +30,7 @@ let separatorSet = set [
     '\r'
     '\t'
     '"'
+    ','
     ':'
     ';'
     '('
