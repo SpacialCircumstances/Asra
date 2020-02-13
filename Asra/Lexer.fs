@@ -55,6 +55,7 @@ let keywordMap = Map.ofList [
     "fun", Fun
     "type", Type
     "->", Arrow
+    "=", Equal
 ]
 
 let handleKeywords (identifier: string) = 
@@ -125,7 +126,6 @@ let lexer (name: string) (code: string) =
                                 | '}' -> ValueSome RightCurlyBracket
                                 | '[' -> ValueSome LeftSquareBracket
                                 | ']' -> ValueSome RightSquareBracket
-                                | '=' -> ValueSome Equal
                                 | ';' -> ValueSome Separator
                                 | ':' -> ValueSome Colon
                                 | ',' -> ValueSome Comma
