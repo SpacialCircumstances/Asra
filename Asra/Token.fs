@@ -13,7 +13,7 @@ type TokenData =
     | NumberLiteral of string
     | Identifier of string
     | Let
-    | In
+    | Do
     | Rec
     | End
     | If

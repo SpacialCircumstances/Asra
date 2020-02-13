@@ -46,9 +46,9 @@ let isSeparator c = Set.contains c separatorSet
 
 let keywordMap = Map.ofList [
     "let", Let
-    "in", In
     "rec", Rec
     "end", End
+    "do", Do
     "if", If
     "then", Then
     "else", Else
@@ -141,7 +141,6 @@ let lexer (name: string) (code: string) =
                     setCurrentToken Comment
                     incrp ()
                 | '\n' -> 
-                    token Separator |> addToken
                     incrl ()
                 | '"' ->
                     setCurrentToken StringLiteral
