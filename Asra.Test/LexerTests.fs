@@ -12,6 +12,11 @@ let testCases () =
         "(a, b)", [ LeftParen; Identifier "a"; Comma; Identifier "b"; RightParen ]
         "[a; 22; 7 = 4]", [ LeftSquareBracket; Identifier "a"; Separator; NumberLiteral "22"; Separator; NumberLiteral "7"; Equal; NumberLiteral "4"; RightSquareBracket ]
         "{{ (= ..= ==; }", [ LeftCurlyBracket; LeftCurlyBracket; LeftParen; Equal; Identifier "..="; Identifier "=="; Separator; RightCurlyBracket ]
+        "", []
+        "fun let -> else if then if2 type", [ Fun; Let; Arrow; Else; If; Then; Identifier "if2"; Type ]
+        """
+        "Test", "sdf", 23, ad
+        """, [ Separator; StringLiteral "Test"; Comma; StringLiteral "sdf"; Comma; NumberLiteral "23"; Comma; Identifier "ad"; Separator ]
     ] |> Seq.map (fun (code, ast) -> [| box code; box ast|])
 
 let tokenizedMatch code tokenData =
