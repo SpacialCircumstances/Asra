@@ -10,6 +10,8 @@ let testCases () =
         "a b c++", [ Identifier "a"; Identifier "b"; Identifier "c++" ]
         "13.2 33.1 34", [ NumberLiteral "13.2"; NumberLiteral "33.1"; NumberLiteral "34" ]
         "(a, b)", [ LeftParen; Identifier "a"; Comma; Identifier "b"; RightParen ]
+        "[a; 22; 7 = 4]", [ LeftSquareBracket; Identifier "a"; Separator; NumberLiteral "22"; Separator; NumberLiteral "7"; Equal; NumberLiteral "4"; RightSquareBracket ]
+        "{{ (= ..= ==; }", [ LeftCurlyBracket; LeftCurlyBracket; LeftParen; Equal; Identifier "..="; Identifier "=="; Separator; RightCurlyBracket ]
     ] |> Seq.map (fun (code, ast) -> [| box code; box ast|])
 
 let tokenizedMatch code tokenData =
