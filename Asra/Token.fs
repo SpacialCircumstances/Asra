@@ -19,10 +19,15 @@ type TokenData =
     | If
     | Then
     | Else
+    | Extern
+    | Import
+    | Match
+    | With
     | Fun
     | Type
     | Equal
     | Arrow
+    | VerticalBar
     | Separator
     | LeftParen
     | RightParen

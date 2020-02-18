@@ -56,6 +56,10 @@ let keywordMap = Map.ofList [
     "type", Type
     "->", Arrow
     "=", Equal
+    "extern", Extern
+    "match", Match
+    "with", With
+    "import", Import
 ]
 
 let handleKeywords (identifier: string) = 
@@ -129,6 +133,7 @@ let lexer (name: string) (code: string) =
                                 | ';' -> ValueSome Separator
                                 | ':' -> ValueSome Colon
                                 | ',' -> ValueSome Comma
+                                | '|' -> ValueSome VerticalBar
                                 | _ -> ValueNone
 
     let lexChar c =
